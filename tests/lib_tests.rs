@@ -11,8 +11,8 @@
 
 use qubit_sanitize::{
     ArgvSanitizer, DEFAULT_EXTRA_FIELDS, EnvSanitizer, FieldSanitizePolicy, FieldSanitizer,
-    FormUrlEncodedSanitizer, HttpHeaderSanitizer, MaskPolicies, MaskPolicy, NameMatchMode,
-    SensitiveFieldPreset, SensitiveFields, SensitivityLevel, UrlSanitizer,
+    FormUrlEncodedSanitizer, HttpBodySanitizer, HttpHeaderSanitizer, MaskPolicies, MaskPolicy,
+    NameMatchMode, SensitiveFieldPreset, SensitiveFields, SensitivityLevel, UrlSanitizer,
 };
 
 #[test]
@@ -23,6 +23,7 @@ fn test_lib_exports_public_api() {
     let _ = FieldSanitizePolicy::default();
     let _ = FieldSanitizer::default();
     let _ = FormUrlEncodedSanitizer::default();
+    let _ = HttpBodySanitizer::default();
     let _ = HttpHeaderSanitizer::default();
     let _ = MaskPolicies::default();
     let _ = MaskPolicy::fixed("****");

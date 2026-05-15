@@ -12,5 +12,6 @@
 mod argv_tests;
 mod env_tests;
 mod form_urlencoded_tests;
+mod http_body_tests;
 mod http_header_tests;
 mod url_tests;
