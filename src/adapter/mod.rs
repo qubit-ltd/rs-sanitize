@@ -13,7 +13,6 @@ mod argv_sanitizer;
 mod env_sanitizer;
 mod form_url_encoded_sanitizer;
 mod header_sanitizer;
-mod name_match;
 mod url_sanitizer;
 
 pub use argv_sanitizer::ArgvSanitizer;

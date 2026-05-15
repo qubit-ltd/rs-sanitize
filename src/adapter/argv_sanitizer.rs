@@ -9,13 +9,7 @@
  ******************************************************************************/
 use std::ffi::OsStr;
 
-use crate::FieldSanitizer;
-
-use super::name_match::{
-    mask_value_for_level,
-    sanitize_adapter_value,
-    sensitivity_for_adapter_name,
-};
+use crate::{FieldSanitizer, NameMatchMode};
 
 /// Sanitizes structured argv vectors for logs and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,14 +69,13 @@ impl ArgvSanitizer {
         S: AsRef<OsStr>,
     {
         let mut sanitized = Vec::new();
-        let mut pending_sensitive_level = None;
+        let mut pending_sensitive_name: Option<String> = None;
         let mut parse_options = true;
 
         for arg in argv {
             let arg = arg.as_ref().to_string_lossy().into_owned();
-            if let Some(level) = pending_sensitive_level.take() {
-                sanitized
-                    .push(mask_value_for_level(&self.field_sanitizer, level, &arg).into_owned());
+            if let Some(name) = pending_sensitive_name.take() {
+                sanitized.push(self.sanitize_sensitive_value(&name, &arg));
                 continue;
             }
 
@@ -102,10 +95,12 @@ impl ArgvSanitizer {
                     sanitized.push(value);
                     continue;
                 }
-                if let Some(level) = option_name(&arg)
-                    .and_then(|name| sensitivity_for_adapter_name(&self.field_sanitizer, name))
-                {
-                    pending_sensitive_level = Some(level);
+                if let Some(name) = option_name(&arg).filter(|name| {
+                    self.field_sanitizer
+                        .sensitivity_for_name(name, NameMatchMode::ExactOrSuffix)
+                        .is_some()
+                }) {
+                    pending_sensitive_name = Some(name.to_string());
                 }
             }
 
@@ -147,11 +142,29 @@ impl ArgvSanitizer {
         if key.is_empty() {
             return None;
         }
-        let sanitized_value = sanitize_adapter_value(&self.field_sanitizer, key, value);
+        let sanitized_value =
+            self.field_sanitizer
+                .sanitize_value(key, value, NameMatchMode::ExactOrSuffix);
         if matches!(sanitized_value, std::borrow::Cow::Borrowed(_)) {
             return None;
         }
         Some(format!("{key}={sanitized_value}"))
+    }
+
+    /// Sanitizes one value whose option or assignment name is already sensitive.
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - Sensitive option or assignment name.
+    /// * `value` - Value to sanitize.
+    ///
+    /// # Returns
+    ///
+    /// Sanitized value according to the sensitivity level resolved from `name`.
+    fn sanitize_sensitive_value(&self, name: &str, value: &str) -> String {
+        self.field_sanitizer
+            .sanitize_value(name, value, NameMatchMode::ExactOrSuffix)
+            .into_owned()
     }
 
     /// Sanitizes one `--key=value` option token when the key is sensitive.
@@ -170,9 +183,9 @@ impl ArgvSanitizer {
         }
         let (left, value) = arg.split_once('=')?;
         let name = option_name(left)?;
-        let level = sensitivity_for_adapter_name(&self.field_sanitizer, name)?;
-        let sanitized_value =
-            mask_value_for_level(&self.field_sanitizer, level, value).into_owned();
+        self.field_sanitizer
+            .sensitivity_for_name(name, NameMatchMode::ExactOrSuffix)?;
+        let sanitized_value = self.sanitize_sensitive_value(name, value);
         Some(format!("{left}={sanitized_value}"))
     }
 }

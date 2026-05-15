@@ -9,11 +9,7 @@
  ******************************************************************************/
 //! Tests for [`ArgvSanitizer`](qubit_sanitize::ArgvSanitizer).
 
-use qubit_sanitize::{
-    ArgvSanitizer,
-    FieldSanitizer,
-    SensitivityLevel,
-};
+use qubit_sanitize::{ArgvSanitizer, FieldSanitizer, SensitivityLevel};
 
 #[test]
 fn test_argv_sanitizer_field_sanitizer_accessors() {

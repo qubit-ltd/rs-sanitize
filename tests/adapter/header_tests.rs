@@ -11,11 +11,7 @@
 
 use std::borrow::Cow;
 
-use qubit_sanitize::{
-    FieldSanitizer,
-    HeaderSanitizer,
-    SensitivityLevel,
-};
+use qubit_sanitize::{FieldSanitizer, HeaderSanitizer, SensitivityLevel};
 
 #[test]
 fn test_header_sanitizer_field_sanitizer_accessors() {

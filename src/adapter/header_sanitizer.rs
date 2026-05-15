@@ -9,9 +9,7 @@
  ******************************************************************************/
 use std::borrow::Cow;
 
-use crate::FieldSanitizer;
-
-use super::name_match::sanitize_adapter_value;
+use crate::{FieldSanitizer, NameMatchMode};
 
 /// Sanitizes header name-value pairs without depending on an HTTP type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,7 +62,8 @@ impl HeaderSanitizer {
     /// Borrowed `value` when `name` is not sensitive, otherwise an owned masked
     /// value.
     pub fn sanitize_value<'a>(&self, name: &str, value: &'a str) -> Cow<'a, str> {
-        sanitize_adapter_value(&self.field_sanitizer, name, value)
+        self.field_sanitizer
+            .sanitize_value(name, value, NameMatchMode::ExactOrSuffix)
     }
 
     /// Sanitizes one header pair.

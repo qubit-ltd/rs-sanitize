@@ -7,14 +7,9 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use std::{
-    borrow::Cow,
-    ffi::OsStr,
-};
+use std::{borrow::Cow, ffi::OsStr};
 
-use crate::FieldSanitizer;
-
-use super::name_match::sanitize_adapter_value;
+use crate::{FieldSanitizer, NameMatchMode};
 
 /// Sanitizes environment variable values.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,7 +62,8 @@ impl EnvSanitizer {
     /// Borrowed `value` when `key` is not sensitive, otherwise an owned masked
     /// value.
     pub fn sanitize_value<'a>(&self, key: &str, value: &'a str) -> Cow<'a, str> {
-        sanitize_adapter_value(&self.field_sanitizer, key, value)
+        self.field_sanitizer
+            .sanitize_value(key, value, NameMatchMode::ExactOrSuffix)
     }
 
     /// Sanitizes one environment variable pair.

@@ -9,10 +9,7 @@
  ******************************************************************************/
 //! Tests for [`UrlSanitizer`](qubit_sanitize::UrlSanitizer).
 
-use qubit_sanitize::{
-    FieldSanitizer,
-    UrlSanitizer,
-};
+use qubit_sanitize::{FieldSanitizer, UrlSanitizer};
 use url::Url;
 
 #[test]
@@ -53,22 +50,22 @@ fn test_url_sanitizer_sanitize_url_masks_sensitive_components() {
 }
 
 #[test]
-fn test_url_sanitizer_sanitize_str_parses_and_masks_prefixed_query_name() {
+fn test_url_sanitizer_sanitize_url_str_parses_and_masks_prefixed_query_name() {
     let sanitizer = UrlSanitizer::default();
 
     assert_eq!(
         sanitizer
-            .sanitize_str("https://example.com/callback?openai_api_key=abcdef&state=ok")
+            .sanitize_url_str("https://example.com/callback?openai_api_key=abcdef&state=ok")
             .expect("test URL should parse"),
         "https://example.com/callback?openai_api_key=****&state=ok",
     );
 }
 
 #[test]
-fn test_url_sanitizer_sanitize_str_reports_parse_error() {
+fn test_url_sanitizer_sanitize_url_str_reports_parse_error() {
     let sanitizer = UrlSanitizer::default();
 
-    assert!(sanitizer.sanitize_str("not a url").is_err());
+    assert!(sanitizer.sanitize_url_str("not a url").is_err());
 }
 
 #[test]

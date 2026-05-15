@@ -22,7 +22,7 @@ mod sensitivity_level;
 pub use default_sensitive_fields::DEFAULT_EXTRA_FIELDS;
 pub use field_name::canonicalize_field_name;
 pub use field_sanitize_policy::FieldSanitizePolicy;
-pub use field_sanitizer::FieldSanitizer;
+pub use field_sanitizer::{FieldSanitizer, NameMatchMode};
 pub use mask_policies::MaskPolicies;
 pub use mask_policy::MaskPolicy;
 pub use sensitive_field_preset::SensitiveFieldPreset;

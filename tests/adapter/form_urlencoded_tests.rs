@@ -9,11 +9,7 @@
  ******************************************************************************/
 //! Tests for [`FormUrlEncodedSanitizer`](qubit_sanitize::FormUrlEncodedSanitizer).
 
-use qubit_sanitize::{
-    FieldSanitizer,
-    FormUrlEncodedSanitizer,
-    SensitivityLevel,
-};
+use qubit_sanitize::{FieldSanitizer, FormUrlEncodedSanitizer, SensitivityLevel};
 
 #[test]
 fn test_form_urlencoded_sanitizer_field_sanitizer_accessors() {

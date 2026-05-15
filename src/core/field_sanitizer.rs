@@ -9,11 +9,16 @@
  ******************************************************************************/
 use std::borrow::Cow;
 
-use super::{
-    FieldSanitizePolicy,
-    SensitiveFieldPreset,
-    SensitivityLevel,
-};
+use super::{FieldSanitizePolicy, SensitiveFieldPreset, SensitivityLevel, canonicalize_field_name};
+
+/// Field-name matching mode used for sensitivity lookup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NameMatchMode {
+    /// Match only the canonicalized field name exactly.
+    Exact,
+    /// Match exactly first, then match contextual names by canonical suffix.
+    ExactOrSuffix,
+}
 
 /// Sanitizes values by looking up their field names in a configurable policy.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,19 +92,71 @@ impl FieldSanitizer {
         self.policy.sensitive_fields.extend_preset(preset);
     }
 
+    /// Returns the sensitivity level for a field name.
+    ///
+    /// [`NameMatchMode::ExactOrSuffix`] first tries exact canonical matching.
+    /// If that fails, it treats configured field names as canonical suffixes of
+    /// contextual names such as `OPENAI_API_KEY`. When multiple suffixes match,
+    /// the longest field name wins.
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - Field name to resolve.
+    /// * `match_mode` - Field-name matching mode.
+    ///
+    /// # Returns
+    ///
+    /// `Some(level)` when the name is sensitive, otherwise `None`.
+    pub fn sensitivity_for_name(
+        &self,
+        name: &str,
+        match_mode: NameMatchMode,
+    ) -> Option<SensitivityLevel> {
+        let fields = &self.policy.sensitive_fields;
+        if let Some(level) = fields.level_for(name) {
+            return Some(level);
+        }
+        if match_mode == NameMatchMode::Exact {
+            return None;
+        }
+
+        let canonical_name = canonicalize_field_name(name);
+        if canonical_name.is_empty() {
+            return None;
+        }
+
+        fields
+            .iter()
+            .filter_map(|(field, level)| {
+                if canonical_name != field && canonical_name.ends_with(field) {
+                    Some((field.len(), level))
+                } else {
+                    None
+                }
+            })
+            .max_by_key(|(field_len, level)| (*field_len, *level))
+            .map(|(_, level)| level)
+    }
+
     /// Sanitizes one field-value pair.
     ///
     /// # Parameters
     ///
     /// * `field` - Field name used for sensitivity lookup.
     /// * `value` - Field value to sanitize.
+    /// * `match_mode` - Field-name matching mode.
     ///
     /// # Returns
     ///
     /// Borrowed `value` when `field` is not sensitive, otherwise an owned masked
-    /// value according to the field's configured sensitivity level.
-    pub fn sanitize_value<'a>(&self, field: &str, value: &'a str) -> Cow<'a, str> {
-        let Some(level) = self.policy.sensitive_fields.level_for(field) else {
+    /// value according to the resolved sensitivity level.
+    pub fn sanitize_value<'a>(
+        &self,
+        field: &str,
+        value: &'a str,
+        match_mode: NameMatchMode,
+    ) -> Cow<'a, str> {
+        let Some(level) = self.sensitivity_for_name(field, match_mode) else {
             return Cow::Borrowed(value);
         };
         self.policy.mask_policies.for_level(level).mask(value)
@@ -110,6 +167,7 @@ impl FieldSanitizer {
     /// # Parameters
     ///
     /// * `map` - Source map whose keys are treated as field names.
+    /// * `match_mode` - Field-name matching mode.
     ///
     /// # Returns
     ///
@@ -118,7 +176,7 @@ impl FieldSanitizer {
     /// This supports any standard map type that iterates as `(&String, &String)`
     /// and can be rebuilt from `(String, String)` items, such as
     /// `std::collections::BTreeMap` and `std::collections::HashMap`.
-    pub fn sanitize_map<M>(&self, map: &M) -> M
+    pub fn sanitize_map<M>(&self, map: &M, match_mode: NameMatchMode) -> M
     where
         for<'a> &'a M: IntoIterator<Item = (&'a String, &'a String)>,
         M: FromIterator<(String, String)>,
@@ -127,7 +185,8 @@ impl FieldSanitizer {
             .map(|(field, value)| {
                 (
                     field.clone(),
-                    self.sanitize_value(field, value.as_str()).into_owned(),
+                    self.sanitize_value(field, value.as_str(), match_mode)
+                        .into_owned(),
                 )
             })
             .collect()
@@ -138,12 +197,13 @@ impl FieldSanitizer {
     /// # Parameters
     ///
     /// * `map` - Mutable map whose keys are treated as field names.
-    pub fn sanitize_map_in_place<M>(&self, map: &mut M)
+    /// * `match_mode` - Field-name matching mode.
+    pub fn sanitize_map_in_place<M>(&self, map: &mut M, match_mode: NameMatchMode)
     where
         for<'a> &'a mut M: IntoIterator<Item = (&'a String, &'a mut String)>,
     {
         for (field, value) in map {
-            let sanitized = self.sanitize_value(field, value.as_str());
+            let sanitized = self.sanitize_value(field, value.as_str(), match_mode);
             if let Cow::Owned(sanitized) = sanitized {
                 *value = sanitized;
             }

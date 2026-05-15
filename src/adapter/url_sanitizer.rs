@@ -7,21 +7,9 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use ::url::{
-    ParseError,
-    Url,
-    form_urlencoded,
-};
+use ::url::{ParseError, Url, form_urlencoded};
 
-use crate::{
-    FieldSanitizer,
-    SensitivityLevel,
-};
-
-use super::name_match::{
-    mask_value_for_level,
-    sanitize_adapter_value,
-};
+use crate::{FieldSanitizer, NameMatchMode, SensitivityLevel};
 
 /// Sanitizes URLs for logs and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,8 +83,11 @@ impl UrlSanitizer {
 
         let mut serializer = form_urlencoded::Serializer::new(String::new());
         for (key, value) in url.query_pairs() {
-            let sanitized_value =
-                sanitize_adapter_value(&self.field_sanitizer, key.as_ref(), value.as_ref());
+            let sanitized_value = self.field_sanitizer.sanitize_value(
+                key.as_ref(),
+                value.as_ref(),
+                NameMatchMode::ExactOrSuffix,
+            );
             serializer.append_pair(key.as_ref(), sanitized_value.as_ref());
         }
         sanitized.set_query(Some(&serializer.finish()));
@@ -116,7 +107,7 @@ impl UrlSanitizer {
     /// # Errors
     ///
     /// Returns [`ParseError`] when `url` is not parseable by [`Url::parse`].
-    pub fn sanitize_str(&self, url: &str) -> Result<String, ParseError> {
+    pub fn sanitize_url_str(&self, url: &str) -> Result<String, ParseError> {
         Url::parse(url).map(|url| self.sanitize_url(&url))
     }
 }
@@ -139,5 +130,10 @@ impl Default for UrlSanitizer {
 ///
 /// Masked component value.
 fn mask_url_component(sanitizer: &FieldSanitizer, value: &str) -> String {
-    mask_value_for_level(sanitizer, SensitivityLevel::High, value).into_owned()
+    sanitizer
+        .policy()
+        .mask_policies
+        .for_level(SensitivityLevel::High)
+        .mask(value)
+        .into_owned()
 }
