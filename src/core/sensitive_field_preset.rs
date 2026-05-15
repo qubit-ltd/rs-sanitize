@@ -7,6 +7,8 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
+use super::SensitivityLevel;
+
 /// Predefined groups of sensitive field names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensitiveFieldPreset {
@@ -18,4 +20,53 @@ pub enum SensitiveFieldPreset {
     Http,
     /// Session identifiers and session tokens.
     Session,
+}
+
+/// Field names for [`SensitiveFieldPreset::Credentials`].
+pub const CREDENTIALS_FIELDS: [(&str, SensitivityLevel); 5] = [
+    ("password", SensitivityLevel::Secret),
+    ("passwd", SensitivityLevel::Secret),
+    ("secret", SensitivityLevel::Secret),
+    ("client_secret", SensitivityLevel::Secret),
+    ("private_key", SensitivityLevel::Secret),
+];
+
+/// Field names for [`SensitiveFieldPreset::AuthTokens`].
+pub const AUTH_TOKEN_FIELDS: [(&str, SensitivityLevel); 9] = [
+    ("api_key", SensitivityLevel::High),
+    ("x_api_key", SensitivityLevel::High),
+    ("token", SensitivityLevel::High),
+    ("access_token", SensitivityLevel::High),
+    ("refresh_token", SensitivityLevel::High),
+    ("id_token", SensitivityLevel::High),
+    ("jwt", SensitivityLevel::High),
+    ("jwt_token", SensitivityLevel::High),
+    ("auth_token", SensitivityLevel::High),
+];
+
+/// Field names for [`SensitiveFieldPreset::Http`].
+pub const HTTP_FIELDS: [(&str, SensitivityLevel); 4] = [
+    ("authorization", SensitivityLevel::High),
+    ("proxy_authorization", SensitivityLevel::High),
+    ("cookie", SensitivityLevel::High),
+    ("set_cookie", SensitivityLevel::High),
+];
+
+/// Field names for [`SensitiveFieldPreset::Session`].
+pub const SESSION_FIELDS: [(&str, SensitivityLevel); 3] = [
+    ("session", SensitivityLevel::Medium),
+    ("session_id", SensitivityLevel::Medium),
+    ("session_token", SensitivityLevel::High),
+];
+
+impl SensitiveFieldPreset {
+    /// Returns the canonical field names and levels for this preset.
+    pub const fn fields(self) -> &'static [(&'static str, SensitivityLevel)] {
+        match self {
+            Self::Credentials => &CREDENTIALS_FIELDS,
+            Self::AuthTokens => &AUTH_TOKEN_FIELDS,
+            Self::Http => &HTTP_FIELDS,
+            Self::Session => &SESSION_FIELDS,
+        }
+    }
 }

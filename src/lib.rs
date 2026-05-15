@@ -20,6 +20,6 @@ pub use adapter::{
     ArgvSanitizer, EnvSanitizer, FormUrlEncodedSanitizer, HeaderSanitizer, UrlSanitizer,
 };
 pub use core::{
-    DEFAULT_SENSITIVE_FIELD_NAMES, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy,
+    DEFAULT_EXTRA_FIELDS, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy,
     SensitiveFieldPreset, SensitiveFields, SensitivityLevel, canonicalize_field_name,
 };

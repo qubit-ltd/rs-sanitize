@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 
 use super::{
     SensitiveFieldPreset, SensitivityLevel, canonicalize_field_name,
-    default_sensitive_fields::DEFAULT_SENSITIVE_FIELD_NAMES,
+    default_sensitive_fields::DEFAULT_EXTRA_FIELDS,
 };
 
 /// Set of sensitive field names and their sensitivity levels.
@@ -68,50 +68,8 @@ impl SensitiveFields {
     ///
     /// * `preset` - Predefined group to insert.
     pub fn extend_preset(&mut self, preset: SensitiveFieldPreset) {
-        match preset {
-            SensitiveFieldPreset::Credentials => {
-                self.extend(
-                    [
-                        "password",
-                        "passwd",
-                        "secret",
-                        "client_secret",
-                        "private_key",
-                    ],
-                    SensitivityLevel::Secret,
-                );
-            }
-            SensitiveFieldPreset::AuthTokens => {
-                self.extend(
-                    [
-                        "api_key",
-                        "x_api_key",
-                        "token",
-                        "access_token",
-                        "refresh_token",
-                        "id_token",
-                        "jwt",
-                        "jwt_token",
-                        "auth_token",
-                    ],
-                    SensitivityLevel::High,
-                );
-            }
-            SensitiveFieldPreset::Http => {
-                self.extend(
-                    [
-                        "authorization",
-                        "proxy_authorization",
-                        "cookie",
-                        "set_cookie",
-                    ],
-                    SensitivityLevel::High,
-                );
-            }
-            SensitiveFieldPreset::Session => {
-                self.extend(["session", "session_id"], SensitivityLevel::Medium);
-                self.insert("session_token", SensitivityLevel::High);
-            }
+        for (field, level) in preset.fields() {
+            self.insert(field, *level);
         }
     }
 
@@ -175,7 +133,15 @@ impl Default for SensitiveFields {
     /// Creates a set containing built-in sensitive fields.
     fn default() -> Self {
         let mut fields = Self::new();
-        for (field, level) in DEFAULT_SENSITIVE_FIELD_NAMES {
+        for preset in [
+            SensitiveFieldPreset::Credentials,
+            SensitiveFieldPreset::AuthTokens,
+            SensitiveFieldPreset::Http,
+            SensitiveFieldPreset::Session,
+        ] {
+            fields.extend_preset(preset);
+        }
+        for (field, level) in DEFAULT_EXTRA_FIELDS {
             fields.insert(field, level);
         }
         fields
