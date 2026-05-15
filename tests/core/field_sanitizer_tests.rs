@@ -10,7 +10,10 @@
 //! Tests for [`FieldSanitizer`](qubit_sanitize::FieldSanitizer).
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 
 use qubit_sanitize::{
     FieldSanitizePolicy,
@@ -137,6 +140,36 @@ fn test_field_sanitizer_sanitize_map_returns_sanitized_copy() {
 fn test_field_sanitizer_sanitize_map_in_place_updates_sensitive_values() {
     let sanitizer = FieldSanitizer::default();
     let mut input = BTreeMap::new();
+    input.insert("access_token".to_string(), "abcdef".to_string());
+    input.insert("mode".to_string(), "debug".to_string());
+
+    sanitizer.sanitize_map_in_place(&mut input);
+
+    assert_eq!(input.get("access_token").map(String::as_str), Some("****"));
+    assert_eq!(input.get("mode").map(String::as_str), Some("debug"));
+}
+
+#[test]
+fn test_field_sanitizer_sanitize_hash_map_returns_sanitized_copy() {
+    let sanitizer = FieldSanitizer::default();
+    let mut input = HashMap::new();
+    input.insert("password".to_string(), "secret".to_string());
+    input.insert("name".to_string(), "alice".to_string());
+
+    let output = sanitizer.sanitize_map(&input);
+
+    assert_eq!(
+        output.get("password").map(String::as_str),
+        Some("<redacted>")
+    );
+    assert_eq!(output.get("name").map(String::as_str), Some("alice"));
+    assert_eq!(input.get("password").map(String::as_str), Some("secret"));
+}
+
+#[test]
+fn test_field_sanitizer_sanitize_hash_map_in_place_updates_sensitive_values() {
+    let sanitizer = FieldSanitizer::default();
+    let mut input = HashMap::new();
     input.insert("access_token".to_string(), "abcdef".to_string());
     input.insert("mode".to_string(), "debug".to_string());
 

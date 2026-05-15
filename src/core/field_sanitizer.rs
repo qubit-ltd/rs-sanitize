@@ -7,10 +7,7 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use std::{
-    borrow::Cow,
-    collections::BTreeMap,
-};
+use std::borrow::Cow;
 
 use super::{
     FieldSanitizePolicy,
@@ -117,8 +114,16 @@ impl FieldSanitizer {
     /// # Returns
     ///
     /// New map preserving keys and sanitizing sensitive values.
-    pub fn sanitize_map(&self, map: &BTreeMap<String, String>) -> BTreeMap<String, String> {
-        map.iter()
+    ///
+    /// This supports any standard map type that iterates as `(&String, &String)`
+    /// and can be rebuilt from `(String, String)` items, such as
+    /// `std::collections::BTreeMap` and `std::collections::HashMap`.
+    pub fn sanitize_map<M>(&self, map: &M) -> M
+    where
+        for<'a> &'a M: IntoIterator<Item = (&'a String, &'a String)>,
+        M: FromIterator<(String, String)>,
+    {
+        map.into_iter()
             .map(|(field, value)| {
                 (
                     field.clone(),
@@ -133,7 +138,10 @@ impl FieldSanitizer {
     /// # Parameters
     ///
     /// * `map` - Mutable map whose keys are treated as field names.
-    pub fn sanitize_map_in_place(&self, map: &mut BTreeMap<String, String>) {
+    pub fn sanitize_map_in_place<M>(&self, map: &mut M)
+    where
+        for<'a> &'a mut M: IntoIterator<Item = (&'a String, &'a mut String)>,
+    {
         for (field, value) in map {
             let sanitized = self.sanitize_value(field, value.as_str());
             if let Cow::Owned(sanitized) = sanitized {
