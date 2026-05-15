@@ -70,6 +70,26 @@ fn test_argv_sanitizer_masks_sensitive_inline_option() {
 }
 
 #[test]
+fn test_argv_sanitizer_masks_empty_inline_option_value() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["client", "--token=", "mode"]),
+        ["client", "--token=", "mode"],
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_keeps_nonsensitive_inline_option_value() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["client", "--not-sensitive=abcdef"]),
+        ["client", "--not-sensitive=abcdef"],
+    );
+}
+
+#[test]
 fn test_argv_sanitizer_masks_assignment_tokens() {
     let sanitizer = ArgvSanitizer::default();
 
