@@ -1,0 +1,33 @@
+[package]
+name = "qubit-sanitize"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+authors = ["Haixing Hu <starfish.hu@gmail.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/qubit-ltd/rs-sanitize"
+description = "Reusable field-value sanitization utilities for Rust"
+homepage = "https://github.com/qubit-ltd/rs-sanitize"
+documentation = "https://docs.rs/qubit-sanitize"
+readme = "README.md"
+keywords = ["sanitize", "mask", "redact", "logging", "qubit"]
+categories = ["development-tools", "value-formatting"]
+exclude = [
+    "align-ci.sh",
+    "ci-check.sh",
+    "coverage.sh",
+    "style-check.sh",
+    "update-submodule.sh",
+    ".github/*",
+    ".llvm-cov.toml",
+    ".cargo-audit.toml.example",
+]
+
+[lib]
+name = "qubit_sanitize"
+doctest = true
+
+[dependencies]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
