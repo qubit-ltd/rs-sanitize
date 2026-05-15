@@ -18,10 +18,10 @@ objects, and other crates: given a `(field, value)` pair, decide whether the
 field is sensitive and return the safe value to display.
 
 The adapter layer builds on that core policy for common structured inputs such
-as URLs, URL-encoded forms, HTTP headers, argv vectors, and environment
-variables. Adapters parse only the formats they explicitly model; shell command
-strings, JSON bodies, and multipart bodies should still be handled by caller
-crates that have the full protocol context.
+as URLs, URL-encoded forms, HTTP headers, HTTP bodies, argv vectors, and
+environment variables. Adapters parse only the formats they explicitly model;
+shell command strings and other application-specific protocols should still be
+handled by caller crates that have the full context.
 
 ## Features
 
@@ -34,8 +34,8 @@ crates that have the full protocol context.
   preservation, and full removal
 - A `FieldSanitizer` object that sanitizes single field-value pairs
 - Convenience helpers for sanitizing `BTreeMap<String, String>` values by key
-- Adapters for URLs, URL-encoded forms, HTTP headers, argv vectors, and
-  environment variables
+- Adapters for URLs, URL-encoded forms, HTTP headers, HTTP bodies, argv
+  vectors, and environment variables
 
 ## Quick Start
 
@@ -211,6 +211,7 @@ For mutable structured data, use `sanitize_map_in_place` with an explicit
 use qubit_sanitize::{
     ArgvSanitizer,
     FormUrlEncodedSanitizer,
+    HttpBodySanitizer,
     HttpHeaderSanitizer,
     UrlSanitizer,
 };
@@ -233,6 +234,13 @@ let header = HttpHeaderSanitizer::default()
     .sanitize_value(&AUTHORIZATION, &HeaderValue::from_static("Bearer abcdef"));
 assert_eq!(header, "****");
 
+let body_content_type = HeaderValue::from_static("application/json");
+let body = HttpBodySanitizer::default().sanitize_body(
+    br#"{"user":"alice","password":"secret"}"#,
+    Some(&body_content_type),
+);
+assert_eq!(body, r#"{"password":"<redacted>","user":"alice"}"#);
+
 let argv = ArgvSanitizer::default()
     .sanitize_argv_display(["docker", "login", "--password", "secret"]);
 assert_eq!(argv, r#"["docker", "login", "--password", "<redacted>"]"#);
@@ -249,18 +257,24 @@ The crate has two layers:
 
 - Use `core` / root exports such as `FieldSanitizer` for field-name matching
   and value masking.
-- Use `adapter` / root exports such as `UrlSanitizer` and `ArgvSanitizer` for
-  supported structured inputs.
+- Use `adapter` / root exports such as `UrlSanitizer`, `HttpBodySanitizer`, and
+  `ArgvSanitizer` for supported structured inputs.
 - Keep protocol-specific parsing in caller crates when the adapter cannot model
-  the full context, especially shell command strings, JSON bodies, and
-  multipart bodies.
+  the full context, especially shell command strings and application-specific
+  payloads.
 
 For example, an HTTP crate can use `UrlSanitizer` for parsed URLs and
-`HttpHeaderSanitizer` for `http::HeaderMap` and `http::HeaderValue` values,
-while still owning body preview,
-content type, JSON, and multipart policy. A command runner can use
-`ArgvSanitizer` for structured argv and `EnvSanitizer` for explicit environment
-overrides, but should not claim to safely parse arbitrary shell scripts.
+`HttpHeaderSanitizer` for `http::HeaderMap` and `http::HeaderValue` values. It
+can use `HttpBodySanitizer` when it has body bytes plus an optional
+`Content-Type` header; the adapter supports JSON, NDJSON, URL-encoded forms,
+multipart bodies, text, and binary fallback markers. The returned body string is
+for logs and diagnostics, not a replayable HTTP body: structured output may be
+compacted and may not preserve original whitespace, field order, or JSON value
+types for redacted fields. The caller still owns capture limits, decompression,
+streaming boundaries, and any application-specific parsing. A command runner can
+use `ArgvSanitizer` for structured argv and `EnvSanitizer` for explicit
+environment overrides, but should not claim to safely parse arbitrary shell
+scripts.
 
 ## Testing
 

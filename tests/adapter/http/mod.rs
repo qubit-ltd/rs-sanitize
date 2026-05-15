@@ -7,10 +7,7 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-//! Tests for structured object sanitization adapters.
+//! Tests for HTTP-specific sanitization adapters.
 
-mod argv_tests;
-mod env_tests;
-mod form_urlencoded_tests;
-mod http;
-mod url_tests;
+mod body_sanitizer_tests;
+mod header_sanitizer_tests;
