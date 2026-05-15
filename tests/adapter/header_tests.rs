@@ -11,7 +11,28 @@
 
 use std::borrow::Cow;
 
-use qubit_sanitize::HeaderSanitizer;
+use qubit_sanitize::{
+    FieldSanitizer,
+    HeaderSanitizer,
+    SensitivityLevel,
+};
+
+#[test]
+fn test_header_sanitizer_field_sanitizer_accessors() {
+    let mut sanitizer = HeaderSanitizer::default();
+
+    assert!(
+        sanitizer
+            .field_sanitizer()
+            .policy()
+            .sensitive_fields
+            .contains("authorization")
+    );
+    sanitizer
+        .field_sanitizer_mut()
+        .insert_sensitive_field("x_custom_token", SensitivityLevel::High);
+    assert_eq!(sanitizer.sanitize_value("X-Custom-Token", "abcdef"), "****",);
+}
 
 #[test]
 fn test_header_sanitizer_masks_sensitive_header_value() {
@@ -45,5 +66,15 @@ fn test_header_sanitizer_sanitize_pair_preserves_name() {
     assert_eq!(
         sanitizer.sanitize_pair("Cookie", "sid=abcdef"),
         ("Cookie".to_string(), "****".to_string()),
+    );
+}
+
+#[test]
+fn test_header_sanitizer_constructed_from_field_sanitizer() {
+    let sanitizer = HeaderSanitizer::new(FieldSanitizer::default());
+
+    assert_eq!(
+        sanitizer.sanitize_value("Authorization", "Bearer abcdef"),
+        "****",
     );
 }

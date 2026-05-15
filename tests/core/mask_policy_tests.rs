@@ -47,6 +47,13 @@ fn test_mask_policy_preserve_suffix_keeps_only_tail() {
 }
 
 #[test]
+fn test_mask_policy_preserve_suffix_masks_short_value() {
+    let policy = MaskPolicy::preserve_suffix(4, "****", 4);
+
+    assert_eq!(policy.mask("abcd"), "****");
+}
+
+#[test]
 fn test_mask_policy_empty_removes_value() {
     let policy = MaskPolicy::empty();
 

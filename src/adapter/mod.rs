@@ -9,15 +9,15 @@
  ******************************************************************************/
 //! Adapters for sanitizing structured objects with core masking policies.
 
-mod argv;
-mod env;
-mod form_urlencoded;
-mod header;
+mod argv_sanitizer;
+mod env_sanitizer;
+mod form_url_encoded_sanitizer;
+mod header_sanitizer;
 mod name_match;
-mod url;
+mod url_sanitizer;
 
-pub use argv::ArgvSanitizer;
-pub use env::EnvSanitizer;
-pub use form_urlencoded::FormUrlEncodedSanitizer;
-pub use header::HeaderSanitizer;
-pub use url::UrlSanitizer;
+pub use argv_sanitizer::ArgvSanitizer;
+pub use env_sanitizer::EnvSanitizer;
+pub use form_url_encoded_sanitizer::FormUrlEncodedSanitizer;
+pub use header_sanitizer::HeaderSanitizer;
+pub use url_sanitizer::UrlSanitizer;

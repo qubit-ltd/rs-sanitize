@@ -9,7 +9,31 @@
  ******************************************************************************/
 //! Tests for [`ArgvSanitizer`](qubit_sanitize::ArgvSanitizer).
 
-use qubit_sanitize::ArgvSanitizer;
+use qubit_sanitize::{
+    ArgvSanitizer,
+    FieldSanitizer,
+    SensitivityLevel,
+};
+
+#[test]
+fn test_argv_sanitizer_field_sanitizer_accessors() {
+    let mut sanitizer = ArgvSanitizer::default();
+
+    assert!(
+        sanitizer
+            .field_sanitizer()
+            .policy()
+            .sensitive_fields
+            .contains("password")
+    );
+    sanitizer
+        .field_sanitizer_mut()
+        .insert_sensitive_field("custom_flag", SensitivityLevel::High);
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "--custom-flag", "secret"]),
+        ["cmd", "--custom-flag", "****"],
+    );
+}
 
 #[test]
 fn test_argv_sanitizer_masks_sensitive_option_next_value() {
@@ -72,5 +96,65 @@ fn test_argv_sanitizer_formats_display_string() {
     assert_eq!(
         sanitizer.sanitize_argv_display(["cmd", "--client-secret", "abcdef"]),
         r#"["cmd", "--client-secret", "<redacted>"]"#,
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_stops_option_parsing_at_double_dash() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "--", "--password", "secret"]),
+        ["cmd", "--", "--password", "secret"],
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_keeps_single_dash_token() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "-", "secret"]),
+        ["cmd", "-", "secret"]
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_masks_single_dash_sensitive_option() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "-password", "secret"]),
+        ["cmd", "-password", "<redacted>"],
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_ignores_assignment_with_empty_key() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "=secret"]),
+        ["cmd", "=secret"]
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_keeps_option_name_only_dashes() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "---", "value"]),
+        ["cmd", "---", "value"]
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_constructed_from_field_sanitizer() {
+    let sanitizer = ArgvSanitizer::new(FieldSanitizer::default());
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["cmd", "--token", "abcdef"]),
+        ["cmd", "--token", "****"],
     );
 }

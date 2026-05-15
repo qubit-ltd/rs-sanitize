@@ -9,7 +9,31 @@
  ******************************************************************************/
 //! Tests for [`FormUrlEncodedSanitizer`](qubit_sanitize::FormUrlEncodedSanitizer).
 
-use qubit_sanitize::FormUrlEncodedSanitizer;
+use qubit_sanitize::{
+    FieldSanitizer,
+    FormUrlEncodedSanitizer,
+    SensitivityLevel,
+};
+
+#[test]
+fn test_form_urlencoded_sanitizer_field_sanitizer_accessors() {
+    let mut sanitizer = FormUrlEncodedSanitizer::default();
+
+    assert!(
+        sanitizer
+            .field_sanitizer()
+            .policy()
+            .sensitive_fields
+            .contains("password")
+    );
+    sanitizer
+        .field_sanitizer_mut()
+        .insert_sensitive_field("custom_field", SensitivityLevel::High);
+    assert_eq!(
+        sanitizer.sanitize_str("custom_field=abcdef&mode=debug"),
+        "custom_field=****&mode=debug",
+    );
+}
 
 #[test]
 fn test_form_urlencoded_sanitizer_masks_sensitive_fields() {
@@ -28,5 +52,25 @@ fn test_form_urlencoded_sanitizer_preserves_duplicate_fields() {
     assert_eq!(
         sanitizer.sanitize_str("token=first&token=second&mode=debug"),
         "token=****&token=****&mode=debug",
+    );
+}
+
+#[test]
+fn test_form_urlencoded_sanitizer_sanitize_bytes() {
+    let sanitizer = FormUrlEncodedSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_bytes(b"password=secret&mode=debug"),
+        "password=%3Credacted%3E&mode=debug",
+    );
+}
+
+#[test]
+fn test_form_urlencoded_sanitizer_constructed_from_field_sanitizer() {
+    let sanitizer = FormUrlEncodedSanitizer::new(FieldSanitizer::default());
+
+    assert_eq!(
+        sanitizer.sanitize_str("password=secret"),
+        "password=%3Credacted%3E",
     );
 }
