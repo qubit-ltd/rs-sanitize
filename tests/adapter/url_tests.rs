@@ -9,7 +9,10 @@
  ******************************************************************************/
 //! Tests for [`UrlSanitizer`](qubit_sanitize::UrlSanitizer).
 
-use qubit_sanitize::{FieldSanitizer, UrlSanitizer};
+use qubit_sanitize::{
+    FieldSanitizer,
+    UrlSanitizer,
+};
 use url::Url;
 
 #[test]

@@ -10,10 +10,18 @@
 //! Tests for [`FieldSanitizer`](qubit_sanitize::FieldSanitizer).
 
 use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 
 use qubit_sanitize::{
-    FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy, NameMatchMode, SensitiveFields,
+    FieldSanitizePolicy,
+    FieldSanitizer,
+    MaskPolicies,
+    MaskPolicy,
+    NameMatchMode,
+    SensitiveFields,
     SensitivityLevel,
 };
 

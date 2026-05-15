@@ -9,16 +9,13 @@
  ******************************************************************************/
 use std::borrow::Cow;
 
-use super::{FieldSanitizePolicy, SensitiveFieldPreset, SensitivityLevel, canonicalize_field_name};
-
-/// Field-name matching mode used for sensitivity lookup.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum NameMatchMode {
-    /// Match only the canonicalized field name exactly.
-    Exact,
-    /// Match exactly first, then match contextual names by canonical suffix.
-    ExactOrSuffix,
-}
+use super::{
+    FieldSanitizePolicy,
+    NameMatchMode,
+    SensitiveFieldPreset,
+    SensitivityLevel,
+    canonicalize_field_name,
+};
 
 /// Sanitizes values by looking up their field names in a configurable policy.
 #[derive(Debug, Clone, PartialEq, Eq)]

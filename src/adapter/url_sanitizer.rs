@@ -7,9 +7,17 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use ::url::{ParseError, Url, form_urlencoded};
+use ::url::{
+    ParseError,
+    Url,
+    form_urlencoded,
+};
 
-use crate::{FieldSanitizer, NameMatchMode, SensitivityLevel};
+use crate::{
+    FieldSanitizer,
+    NameMatchMode,
+    SensitivityLevel,
+};
 
 /// Sanitizes URLs for logs and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -9,7 +9,10 @@
  ******************************************************************************/
 use ::url::form_urlencoded;
 
-use crate::{FieldSanitizer, NameMatchMode};
+use crate::{
+    FieldSanitizer,
+    NameMatchMode,
+};
 
 /// Sanitizes `application/x-www-form-urlencoded` payloads.
 #[derive(Debug, Clone, PartialEq, Eq)]

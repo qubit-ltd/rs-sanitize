@@ -11,13 +11,20 @@ use http::HeaderValue;
 use serde_json::Value;
 use url::form_urlencoded;
 
-use crate::{FieldSanitizer, NameMatchMode};
+use crate::{
+    FieldSanitizer,
+    NameMatchMode,
+};
 
 use super::{
     body_bytes::trim_ascii_whitespace,
     body_input_kind::BodyInputKind,
-    content_type, multipart,
-    redaction_markers::{INVALID_CONTENT_TYPE_REDACTED, MULTIPART_BODY_REDACTED},
+    content_type,
+    multipart,
+    redaction_markers::{
+        INVALID_CONTENT_TYPE_REDACTED,
+        MULTIPART_BODY_REDACTED,
+    },
 };
 
 /// Sanitizes HTTP body bytes for logs and diagnostics.

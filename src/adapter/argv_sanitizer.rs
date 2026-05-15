@@ -9,7 +9,10 @@
  ******************************************************************************/
 use std::ffi::OsStr;
 
-use crate::{FieldSanitizer, NameMatchMode};
+use crate::{
+    FieldSanitizer,
+    NameMatchMode,
+};
 
 /// Sanitizes structured argv vectors for logs and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]

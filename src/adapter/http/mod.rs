@@ -11,11 +11,11 @@
 
 mod body_bytes;
 mod body_input_kind;
-mod body_sanitizer;
 mod content_type;
-mod header_sanitizer;
+mod http_body_sanitizer;
+mod http_header_sanitizer;
 mod multipart;
 mod redaction_markers;
 
-pub use body_sanitizer::HttpBodySanitizer;
-pub use header_sanitizer::HttpHeaderSanitizer;
+pub use http_body_sanitizer::HttpBodySanitizer;
+pub use http_header_sanitizer::HttpHeaderSanitizer;

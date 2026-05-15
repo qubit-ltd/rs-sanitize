@@ -17,11 +17,22 @@ pub mod adapter;
 pub mod core;
 
 pub use adapter::{
-    ArgvSanitizer, EnvSanitizer, FormUrlEncodedSanitizer, HttpBodySanitizer, HttpHeaderSanitizer,
+    ArgvSanitizer,
+    EnvSanitizer,
+    FormUrlEncodedSanitizer,
+    HttpBodySanitizer,
+    HttpHeaderSanitizer,
     UrlSanitizer,
 };
 pub use core::{
-    DEFAULT_EXTRA_FIELDS, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy,
-    NameMatchMode, SensitiveFieldPreset, SensitiveFields, SensitivityLevel,
+    DEFAULT_EXTRA_FIELDS,
+    FieldSanitizePolicy,
+    FieldSanitizer,
+    MaskPolicies,
+    MaskPolicy,
+    NameMatchMode,
+    SensitiveFieldPreset,
+    SensitiveFields,
+    SensitivityLevel,
     canonicalize_field_name,
 };

@@ -7,7 +7,11 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-//! Tests for HTTP-specific sanitization adapters.
-
-mod http_body_sanitizer_tests;
-mod http_header_sanitizer_tests;
+/// Field-name matching mode used for sensitivity lookup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NameMatchMode {
+    /// Match only the canonicalized field name exactly.
+    Exact,
+    /// Match exactly first, then match contextual names by canonical suffix.
+    ExactOrSuffix,
+}

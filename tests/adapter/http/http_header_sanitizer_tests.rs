@@ -10,9 +10,20 @@
 //! Tests for [`HttpHeaderSanitizer`](qubit_sanitize::HttpHeaderSanitizer).
 
 use http::HeaderMap;
-use http::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, HeaderName, HeaderValue, SET_COOKIE};
+use http::header::{
+    AUTHORIZATION,
+    CONTENT_TYPE,
+    COOKIE,
+    HeaderName,
+    HeaderValue,
+    SET_COOKIE,
+};
 
-use qubit_sanitize::{FieldSanitizer, HttpHeaderSanitizer, SensitivityLevel};
+use qubit_sanitize::{
+    FieldSanitizer,
+    HttpHeaderSanitizer,
+    SensitivityLevel,
+};
 
 #[test]
 fn test_http_header_sanitizer_field_sanitizer_accessors() {

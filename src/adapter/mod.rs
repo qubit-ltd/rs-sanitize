@@ -18,5 +18,8 @@ mod url_sanitizer;
 pub use argv_sanitizer::ArgvSanitizer;
 pub use env_sanitizer::EnvSanitizer;
 pub use form_url_encoded_sanitizer::FormUrlEncodedSanitizer;
-pub use http::{HttpBodySanitizer, HttpHeaderSanitizer};
+pub use http::{
+    HttpBodySanitizer,
+    HttpHeaderSanitizer,
+};
 pub use url_sanitizer::UrlSanitizer;

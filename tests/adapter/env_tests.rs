@@ -12,7 +12,11 @@
 use std::borrow::Cow;
 
 use qubit_sanitize::{
-    EnvSanitizer, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, SensitiveFields,
+    EnvSanitizer,
+    FieldSanitizePolicy,
+    FieldSanitizer,
+    MaskPolicies,
+    SensitiveFields,
     SensitivityLevel,
 };
 

@@ -8,7 +8,9 @@
  *
  ******************************************************************************/
 use super::redaction_markers::{
-    INVALID_JSON_REDACTED, INVALID_NDJSON_REDACTED, INVALID_OR_TRUNCATED_JSON_REDACTED,
+    INVALID_JSON_REDACTED,
+    INVALID_NDJSON_REDACTED,
+    INVALID_OR_TRUNCATED_JSON_REDACTED,
     INVALID_OR_TRUNCATED_NDJSON_REDACTED,
 };
 

@@ -11,7 +11,12 @@
 
 use http::HeaderValue;
 
-use qubit_sanitize::{FieldSanitizePolicy, FieldSanitizer, HttpBodySanitizer, SensitivityLevel};
+use qubit_sanitize::{
+    FieldSanitizePolicy,
+    FieldSanitizer,
+    HttpBodySanitizer,
+    SensitivityLevel,
+};
 
 #[test]
 fn test_http_body_sanitizer_field_sanitizer_accessors() {
@@ -50,6 +55,26 @@ fn test_http_body_sanitizer_sanitize_body_redacts_json_fields() {
     );
     assert!(!sanitized.contains("secret"));
     assert!(!sanitized.contains("abc"));
+}
+
+#[test]
+fn test_http_body_sanitizer_sanitize_body_keeps_empty_body_empty() {
+    let sanitizer = HttpBodySanitizer::default();
+
+    let sanitized = sanitizer.sanitize_body(b"", None);
+
+    assert_eq!(sanitized, "");
+}
+
+#[test]
+fn test_http_body_sanitizer_sanitize_body_preview_renders_empty_preview() {
+    let sanitizer = HttpBodySanitizer::default();
+
+    assert_eq!(sanitizer.sanitize_body_preview(b"", 0, None), "<empty>");
+    assert_eq!(
+        sanitizer.sanitize_body_preview(b"", 10, None),
+        "<empty>...<truncated 10 bytes>",
+    );
 }
 
 #[test]

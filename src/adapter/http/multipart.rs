@@ -12,10 +12,12 @@
 use crate::NameMatchMode;
 
 use super::{
-    body_sanitizer::HttpBodySanitizer,
     content_type,
+    http_body_sanitizer::HttpBodySanitizer,
     redaction_markers::{
-        MULTIPART_FILE_PART_REDACTED, MULTIPART_PART_REDACTED, MULTIPART_UNNAMED_FIELD,
+        MULTIPART_FILE_PART_REDACTED,
+        MULTIPART_PART_REDACTED,
+        MULTIPART_UNNAMED_FIELD,
     },
 };
 
