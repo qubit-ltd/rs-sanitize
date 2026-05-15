@@ -17,7 +17,8 @@ pub mod adapter;
 pub mod core;
 
 pub use adapter::{
-    ArgvSanitizer, EnvSanitizer, FormUrlEncodedSanitizer, HttpHeaderSanitizer, UrlSanitizer,
+    ArgvSanitizer, EnvSanitizer, FormUrlEncodedSanitizer, HttpBodySanitizer, HttpHeaderSanitizer,
+    UrlSanitizer,
 };
 pub use core::{
     DEFAULT_EXTRA_FIELDS, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy,

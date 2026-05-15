@@ -29,6 +29,7 @@ doctest = true
 
 [dependencies]
 http = "1"
+serde_json = "1"
 url = "2.5"
 
 [lints.rust]
