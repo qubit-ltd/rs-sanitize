@@ -40,15 +40,25 @@ crates that have the full protocol context.
 ## Quick Start
 
 ```rust
-use qubit_sanitize::FieldSanitizer;
+use qubit_sanitize::{
+    FieldSanitizer,
+    NameMatchMode,
+};
 
 let sanitizer = FieldSanitizer::default();
 
 assert_eq!(
-    sanitizer.sanitize_value("password", "correct-horse-battery-staple"),
+    sanitizer.sanitize_value(
+        "password",
+        "correct-horse-battery-staple",
+        NameMatchMode::Exact,
+    ),
     "<redacted>",
 );
-assert_eq!(sanitizer.sanitize_value("mode", "debug"), "debug");
+assert_eq!(
+    sanitizer.sanitize_value("mode", "debug", NameMatchMode::Exact),
+    "debug",
+);
 ```
 
 ## Sensitivity Levels
@@ -104,18 +114,56 @@ assert_eq!(canonicalize_field_name("access_token"), "accesstoken");
 assert_eq!(canonicalize_field_name("access.token"), "accesstoken");
 ```
 
+## Name Matching Modes
+
+Core methods such as `sanitize_value` and `sanitize_map` require callers to
+choose a field-name matching mode. Use `NameMatchMode::Exact` for exact
+canonical field-name matching. For contextual names where callers want
+`OPENAI_API_KEY` to match the configured field `api_key`, use
+`NameMatchMode::ExactOrSuffix`.
+
+```rust
+use qubit_sanitize::{
+    FieldSanitizer,
+    NameMatchMode,
+};
+
+let sanitizer = FieldSanitizer::default();
+
+assert_eq!(
+    sanitizer.sanitize_value(
+        "OPENAI_API_KEY",
+        "abcdef",
+        NameMatchMode::Exact,
+    ),
+    "abcdef",
+);
+assert_eq!(
+    sanitizer.sanitize_value(
+        "OPENAI_API_KEY",
+        "abcdef",
+        NameMatchMode::ExactOrSuffix,
+    ),
+    "****",
+);
+```
+
 ## Custom Fields
 
 ```rust
 use qubit_sanitize::{
     FieldSanitizer,
+    NameMatchMode,
     SensitivityLevel,
 };
 
 let mut sanitizer = FieldSanitizer::default();
 sanitizer.insert_sensitive_field("license_key", SensitivityLevel::Medium);
 
-assert_eq!(sanitizer.sanitize_value("license-key", "abcdef"), "****f");
+assert_eq!(
+    sanitizer.sanitize_value("license-key", "abcdef", NameMatchMode::Exact),
+    "****f",
+);
 ```
 
 You can also start from an empty policy when you do not want built-in field
@@ -137,21 +185,25 @@ sanitizer.insert_sensitive_field("tenant_secret", SensitivityLevel::Secret);
 ```rust
 use std::collections::BTreeMap;
 
-use qubit_sanitize::FieldSanitizer;
+use qubit_sanitize::{
+    FieldSanitizer,
+    NameMatchMode,
+};
 
 let sanitizer = FieldSanitizer::default();
 let mut values = BTreeMap::new();
 values.insert("password".to_string(), "secret".to_string());
 values.insert("name".to_string(), "alice".to_string());
 
-let sanitized = sanitizer.sanitize_map(&values);
+let sanitized = sanitizer.sanitize_map(&values, NameMatchMode::Exact);
 
 assert_eq!(sanitized["password"], "<redacted>");
 assert_eq!(sanitized["name"], "alice");
 assert_eq!(values["password"], "secret");
 ```
 
-For mutable structured data, use `sanitize_map_in_place`.
+For mutable structured data, use `sanitize_map_in_place` with an explicit
+`NameMatchMode`.
 
 ## Adapter Sanitization
 
@@ -163,7 +215,7 @@ use qubit_sanitize::{
     UrlSanitizer,
 };
 
-let url = UrlSanitizer::default().sanitize_str(
+let url = UrlSanitizer::default().sanitize_url_str(
     "https://alice:secret@example.com/path?access_token=abcdef#callback",
 )?;
 assert_eq!(
