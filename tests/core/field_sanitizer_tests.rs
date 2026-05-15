@@ -13,11 +13,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use qubit_sanitize::{
-    FieldSanitizePolicy,
-    FieldSanitizer,
-    MaskPolicies,
-    MaskPolicy,
-    SensitiveFields,
+    FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy, SensitiveFields,
     SensitivityLevel,
 };
 

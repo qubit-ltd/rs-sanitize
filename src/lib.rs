@@ -9,26 +9,17 @@
  ******************************************************************************/
 //! # Qubit Sanitize
 //!
-//! Provides reusable field-value sanitization utilities for logs,
-//! diagnostics, and structured debug output.
+//! Provides reusable sanitization utilities for logs, diagnostics, and
+//! structured debug output.
 //!
 
-mod default_sensitive_fields;
-mod field_name;
-mod field_sanitize_policy;
-mod field_sanitizer;
-mod mask_policies;
-mod mask_policy;
-mod sensitive_field_preset;
-mod sensitive_fields;
-mod sensitivity_level;
+pub mod adapter;
+pub mod core;
 
-pub use default_sensitive_fields::DEFAULT_SENSITIVE_FIELD_NAMES;
-pub use field_name::canonicalize_field_name;
-pub use field_sanitize_policy::FieldSanitizePolicy;
-pub use field_sanitizer::FieldSanitizer;
-pub use mask_policies::MaskPolicies;
-pub use mask_policy::MaskPolicy;
-pub use sensitive_field_preset::SensitiveFieldPreset;
-pub use sensitive_fields::SensitiveFields;
-pub use sensitivity_level::SensitivityLevel;
+pub use adapter::{
+    ArgvSanitizer, EnvSanitizer, FormUrlEncodedSanitizer, HeaderSanitizer, UrlSanitizer,
+};
+pub use core::{
+    DEFAULT_SENSITIVE_FIELD_NAMES, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy,
+    SensitiveFieldPreset, SensitiveFields, SensitivityLevel, canonicalize_field_name,
+};

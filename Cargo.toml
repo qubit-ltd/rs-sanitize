@@ -6,7 +6,7 @@ rust-version = "1.94"
 authors = ["Haixing Hu <starfish.hu@gmail.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/qubit-ltd/rs-sanitize"
-description = "Reusable field-value sanitization utilities for Rust"
+description = "Reusable field and structured object sanitization utilities for Rust"
 homepage = "https://github.com/qubit-ltd/rs-sanitize"
 documentation = "https://docs.rs/qubit-sanitize"
 readme = "README.md"
@@ -28,6 +28,7 @@ name = "qubit_sanitize"
 doctest = true
 
 [dependencies]
+url = "2.5"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }

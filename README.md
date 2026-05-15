@@ -7,21 +7,21 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![中文文档](https://img.shields.io/badge/文档-中文版-blue.svg)](README.zh_CN.md)
 
-Reusable field-value sanitization utilities for Rust.
+Reusable sanitization utilities for Rust.
 
 ## Overview
 
-Qubit Sanitize provides a small, reusable layer for masking sensitive field
-values in logs, diagnostics, and structured debug output. It focuses on the
-common part shared by HTTP clients, command runners, configuration objects, and
-other crates: given a `(field, value)` pair, decide whether the field is
-sensitive and return the safe value to display.
+Qubit Sanitize provides reusable tools for masking sensitive data in logs,
+diagnostics, and structured debug output. The core layer handles the common
+field-value problem shared by HTTP clients, command runners, configuration
+objects, and other crates: given a `(field, value)` pair, decide whether the
+field is sensitive and return the safe value to display.
 
-This crate intentionally does not parse protocol-specific formats. HTTP crates
-should parse URLs, headers, forms, JSON, or multipart bodies themselves; command
-crates should parse argv or environment assignments themselves. Once they have a
-field name and a value, they can delegate the masking decision to
-`FieldSanitizer`.
+The adapter layer builds on that core policy for common structured inputs such
+as URLs, URL-encoded forms, header pairs, argv vectors, and environment
+variables. Adapters parse only the formats they explicitly model; shell command
+strings, JSON bodies, and multipart bodies should still be handled by caller
+crates that have the full protocol context.
 
 ## Features
 
@@ -34,7 +34,8 @@ field name and a value, they can delegate the masking decision to
   preservation, and full removal
 - A `FieldSanitizer` object that sanitizes single field-value pairs
 - Convenience helpers for sanitizing `BTreeMap<String, String>` values by key
-- No runtime dependencies
+- Adapters for URLs, URL-encoded forms, header pairs, argv vectors, and
+  environment variables
 
 ## Quick Start
 
@@ -152,18 +153,59 @@ assert_eq!(values["password"], "secret");
 
 For mutable structured data, use `sanitize_map_in_place`.
 
+## Adapter Sanitization
+
+```rust
+use qubit_sanitize::{
+    ArgvSanitizer,
+    FormUrlEncodedSanitizer,
+    HeaderSanitizer,
+    UrlSanitizer,
+};
+
+let url = UrlSanitizer::default().sanitize_str(
+    "https://alice:secret@example.com/path?access_token=abcdef#callback",
+)?;
+assert_eq!(
+    url,
+    "https://****:****@example.com/path?access_token=****#****",
+);
+
+let form = FormUrlEncodedSanitizer::default()
+    .sanitize_str("username=alice&password=secret");
+assert_eq!(form, "username=alice&password=%3Credacted%3E");
+
+let header = HeaderSanitizer::default()
+    .sanitize_value("Authorization", "Bearer abcdef");
+assert_eq!(header, "****");
+
+let argv = ArgvSanitizer::default()
+    .sanitize_argv_display(["docker", "login", "--password", "secret"]);
+assert_eq!(argv, r#"["docker", "login", "--password", "<redacted>"]"#);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Adapter name matching first uses exact core field matching. It also supports
+suffix matching for contextual names such as `OPENAI_API_KEY`, so prefixed
+environment variables and command-line options can still be masked.
+
 ## Integration Guidance
 
-The crate's boundary is deliberately narrow:
+The crate has two layers:
 
-- Use it for field-name matching and value masking.
-- Keep format parsing in the caller crate.
-- Do not pass whole shell command lines, JSON bodies, or URLs directly unless
-  the caller has already split them into field-value pairs.
+- Use `core` / root exports such as `FieldSanitizer` for field-name matching
+  and value masking.
+- Use `adapter` / root exports such as `UrlSanitizer` and `ArgvSanitizer` for
+  supported structured inputs.
+- Keep protocol-specific parsing in caller crates when the adapter cannot model
+  the full context, especially shell command strings, JSON bodies, and
+  multipart bodies.
 
-For example, an HTTP crate should parse query parameters and call
-`sanitize_value("access_token", value)`. A command runner should parse
-`--token value` or `TOKEN=value` and call `sanitize_value("token", value)`.
+For example, an HTTP crate can use `UrlSanitizer` for parsed URLs and
+`HeaderSanitizer` for `(name, value)` pairs, while still owning body preview,
+content type, JSON, and multipart policy. A command runner can use
+`ArgvSanitizer` for structured argv and `EnvSanitizer` for explicit environment
+overrides, but should not claim to safely parse arbitrary shell scripts.
 
 ## Testing
 
@@ -183,8 +225,8 @@ coverage, use `./coverage.sh` to generate or open reports.
 
 Issues and pull requests are welcome.
 
-- Keep this crate focused on reusable field-value sanitization primitives.
-- Put protocol-specific parsing in downstream crates.
+- Keep the core focused on reusable field-value sanitization primitives.
+- Keep adapters scoped to formats with clear, bounded parsing rules.
 - Add or update tests when changing matching or masking behavior.
 - Update this README and public rustdoc when user-visible behavior changes.
 - Before submitting, run `./align-ci.sh` and then `./ci-check.sh`.

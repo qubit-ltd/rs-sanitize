@@ -10,24 +10,24 @@
 //! Tests for crate-level exports.
 
 use qubit_sanitize::{
-    DEFAULT_SENSITIVE_FIELD_NAMES,
-    FieldSanitizePolicy,
-    FieldSanitizer,
-    MaskPolicies,
-    MaskPolicy,
-    SensitiveFieldPreset,
-    SensitiveFields,
-    SensitivityLevel,
+    ArgvSanitizer, DEFAULT_SENSITIVE_FIELD_NAMES, EnvSanitizer, FieldSanitizePolicy,
+    FieldSanitizer, FormUrlEncodedSanitizer, HeaderSanitizer, MaskPolicies, MaskPolicy,
+    SensitiveFieldPreset, SensitiveFields, SensitivityLevel, UrlSanitizer,
 };
 
 #[test]
 fn test_lib_exports_public_api() {
     let _ = DEFAULT_SENSITIVE_FIELD_NAMES;
+    let _ = ArgvSanitizer::default();
+    let _ = EnvSanitizer::default();
     let _ = FieldSanitizePolicy::default();
     let _ = FieldSanitizer::default();
+    let _ = FormUrlEncodedSanitizer::default();
+    let _ = HeaderSanitizer::default();
     let _ = MaskPolicies::default();
     let _ = MaskPolicy::fixed("****");
     let _ = SensitiveFieldPreset::Credentials;
     let _ = SensitiveFields::default();
     let _ = SensitivityLevel::High;
+    let _ = UrlSanitizer::default();
 }

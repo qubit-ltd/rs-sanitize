@@ -9,11 +9,9 @@
  ******************************************************************************/
 use std::collections::BTreeMap;
 
-use crate::{
-    DEFAULT_SENSITIVE_FIELD_NAMES,
-    SensitiveFieldPreset,
-    SensitivityLevel,
-    canonicalize_field_name,
+use super::{
+    SensitiveFieldPreset, SensitivityLevel, canonicalize_field_name,
+    default_sensitive_fields::DEFAULT_SENSITIVE_FIELD_NAMES,
 };
 
 /// Set of sensitive field names and their sensitivity levels.

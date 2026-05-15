@@ -7,7 +7,7 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use crate::SensitivityLevel;
+use super::SensitivityLevel;
 
 /// Built-in sensitive field names used by [`crate::SensitiveFields::default`].
 pub const DEFAULT_SENSITIVE_FIELD_NAMES: [(&str, SensitivityLevel); 24] = [

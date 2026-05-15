@@ -7,16 +7,9 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use std::{
-    borrow::Cow,
-    collections::BTreeMap,
-};
+use std::{borrow::Cow, collections::BTreeMap};
 
-use crate::{
-    FieldSanitizePolicy,
-    SensitiveFieldPreset,
-    SensitivityLevel,
-};
+use super::{FieldSanitizePolicy, SensitiveFieldPreset, SensitivityLevel};
 
 /// Sanitizes values by looking up their field names in a configurable policy.
 #[derive(Debug, Clone, PartialEq, Eq)]

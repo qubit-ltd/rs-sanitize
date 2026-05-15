@@ -7,10 +7,7 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use crate::{
-    MaskPolicies,
-    SensitiveFields,
-};
+use super::{MaskPolicies, SensitiveFields};
 
 /// Policy used by [`crate::FieldSanitizer`] for field-value sanitization.
 #[derive(Debug, Clone, PartialEq, Eq)]
