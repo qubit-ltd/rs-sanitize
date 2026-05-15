@@ -18,7 +18,7 @@ objects, and other crates: given a `(field, value)` pair, decide whether the
 field is sensitive and return the safe value to display.
 
 The adapter layer builds on that core policy for common structured inputs such
-as URLs, URL-encoded forms, header pairs, argv vectors, and environment
+as URLs, URL-encoded forms, HTTP headers, argv vectors, and environment
 variables. Adapters parse only the formats they explicitly model; shell command
 strings, JSON bodies, and multipart bodies should still be handled by caller
 crates that have the full protocol context.
@@ -34,7 +34,7 @@ crates that have the full protocol context.
   preservation, and full removal
 - A `FieldSanitizer` object that sanitizes single field-value pairs
 - Convenience helpers for sanitizing `BTreeMap<String, String>` values by key
-- Adapters for URLs, URL-encoded forms, header pairs, argv vectors, and
+- Adapters for URLs, URL-encoded forms, HTTP headers, argv vectors, and
   environment variables
 
 ## Quick Start
@@ -211,9 +211,11 @@ For mutable structured data, use `sanitize_map_in_place` with an explicit
 use qubit_sanitize::{
     ArgvSanitizer,
     FormUrlEncodedSanitizer,
-    HeaderSanitizer,
+    HttpHeaderSanitizer,
     UrlSanitizer,
 };
+use http::header::AUTHORIZATION;
+use http::HeaderValue;
 
 let url = UrlSanitizer::default().sanitize_url_str(
     "https://alice:secret@example.com/path?access_token=abcdef#callback",
@@ -227,8 +229,8 @@ let form = FormUrlEncodedSanitizer::default()
     .sanitize_str("username=alice&password=secret");
 assert_eq!(form, "username=alice&password=%3Credacted%3E");
 
-let header = HeaderSanitizer::default()
-    .sanitize_value("Authorization", "Bearer abcdef");
+let header = HttpHeaderSanitizer::default()
+    .sanitize_value(&AUTHORIZATION, &HeaderValue::from_static("Bearer abcdef"));
 assert_eq!(header, "****");
 
 let argv = ArgvSanitizer::default()
@@ -254,7 +256,8 @@ The crate has two layers:
   multipart bodies.
 
 For example, an HTTP crate can use `UrlSanitizer` for parsed URLs and
-`HeaderSanitizer` for `(name, value)` pairs, while still owning body preview,
+`HttpHeaderSanitizer` for `http::HeaderMap` and `http::HeaderValue` values,
+while still owning body preview,
 content type, JSON, and multipart policy. A command runner can use
 `ArgvSanitizer` for structured argv and `EnvSanitizer` for explicit environment
 overrides, but should not claim to safely parse arbitrary shell scripts.

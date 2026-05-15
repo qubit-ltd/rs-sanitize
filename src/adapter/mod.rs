@@ -12,11 +12,11 @@
 mod argv_sanitizer;
 mod env_sanitizer;
 mod form_url_encoded_sanitizer;
-mod header_sanitizer;
+mod http_header_sanitizer;
 mod url_sanitizer;
 
 pub use argv_sanitizer::ArgvSanitizer;
 pub use env_sanitizer::EnvSanitizer;
 pub use form_url_encoded_sanitizer::FormUrlEncodedSanitizer;
-pub use header_sanitizer::HeaderSanitizer;
+pub use http_header_sanitizer::HttpHeaderSanitizer;
 pub use url_sanitizer::UrlSanitizer;

@@ -28,6 +28,7 @@ name = "qubit_sanitize"
 doctest = true
 
 [dependencies]
+http = "1"
 url = "2.5"
 
 [lints.rust]
