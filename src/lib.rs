@@ -17,9 +17,20 @@ pub mod adapter;
 pub mod core;
 
 pub use adapter::{
-    ArgvSanitizer, EnvSanitizer, FormUrlEncodedSanitizer, HeaderSanitizer, UrlSanitizer,
+    ArgvSanitizer,
+    EnvSanitizer,
+    FormUrlEncodedSanitizer,
+    HeaderSanitizer,
+    UrlSanitizer,
 };
 pub use core::{
-    DEFAULT_EXTRA_FIELDS, FieldSanitizePolicy, FieldSanitizer, MaskPolicies, MaskPolicy,
-    SensitiveFieldPreset, SensitiveFields, SensitivityLevel, canonicalize_field_name,
+    DEFAULT_EXTRA_FIELDS,
+    FieldSanitizePolicy,
+    FieldSanitizer,
+    MaskPolicies,
+    MaskPolicy,
+    SensitiveFieldPreset,
+    SensitiveFields,
+    SensitivityLevel,
+    canonicalize_field_name,
 };

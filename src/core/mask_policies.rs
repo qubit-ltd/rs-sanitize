@@ -7,7 +7,10 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use super::{MaskPolicy, SensitivityLevel};
+use super::{
+    MaskPolicy,
+    SensitivityLevel,
+};
 
 /// Mask policies assigned to all supported sensitivity levels.
 #[derive(Debug, Clone, PartialEq, Eq)]

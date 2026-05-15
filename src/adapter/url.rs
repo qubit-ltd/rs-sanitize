@@ -7,11 +7,21 @@
  *    Licensed under the Apache License, Version 2.0.
  *
  ******************************************************************************/
-use ::url::{ParseError, Url, form_urlencoded};
+use ::url::{
+    ParseError,
+    Url,
+    form_urlencoded,
+};
 
-use crate::{FieldSanitizer, SensitivityLevel};
+use crate::{
+    FieldSanitizer,
+    SensitivityLevel,
+};
 
-use super::name_match::{mask_value_for_level, sanitize_adapter_value};
+use super::name_match::{
+    mask_value_for_level,
+    sanitize_adapter_value,
+};
 
 /// Sanitizes URLs for logs and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]

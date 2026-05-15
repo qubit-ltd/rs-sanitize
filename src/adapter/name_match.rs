@@ -9,7 +9,11 @@
  ******************************************************************************/
 use std::borrow::Cow;
 
-use crate::{FieldSanitizer, SensitivityLevel, canonicalize_field_name};
+use crate::{
+    FieldSanitizer,
+    SensitivityLevel,
+    canonicalize_field_name,
+};
 
 /// Returns the sensitivity level for an adapter field name.
 ///

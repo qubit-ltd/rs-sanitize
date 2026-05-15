@@ -12,7 +12,9 @@ use std::ffi::OsStr;
 use crate::FieldSanitizer;
 
 use super::name_match::{
-    mask_value_for_level, sanitize_adapter_value, sensitivity_for_adapter_name,
+    mask_value_for_level,
+    sanitize_adapter_value,
+    sensitivity_for_adapter_name,
 };
 
 /// Sanitizes structured argv vectors for logs and diagnostics.
