@@ -52,11 +52,7 @@ pub(crate) fn sensitivity_for_adapter_name(
                 None
             }
         })
-        .max_by(|(left_len, left_level), (right_len, right_level)| {
-            left_len
-                .cmp(right_len)
-                .then_with(|| left_level.cmp(right_level))
-        })
+        .max_by_key(|(field_len, level)| (*field_len, *level))
         .map(|(_, level)| level)
 }
 
