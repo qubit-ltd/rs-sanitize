@@ -62,11 +62,12 @@ impl ArgvSanitizer {
     /// # Parameters
     ///
     /// * `argv` - Program and argument vector to render safely.
+    /// * `match_mode` - Field-name matching mode for options and assignments.
     ///
     /// # Returns
     ///
     /// Sanitized argv tokens in input order.
-    pub fn sanitize_argv<I, S>(&self, argv: I) -> Vec<String>
+    pub fn sanitize_argv<I, S>(&self, argv: I, match_mode: NameMatchMode) -> Vec<String>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -78,7 +79,7 @@ impl ArgvSanitizer {
         for arg in argv {
             let arg = arg.as_ref().to_string_lossy().into_owned();
             if let Some(name) = pending_sensitive_name.take() {
-                sanitized.push(self.sanitize_sensitive_value(&name, &arg));
+                sanitized.push(self.sanitize_sensitive_value(&name, &arg, match_mode));
                 continue;
             }
 
@@ -88,19 +89,19 @@ impl ArgvSanitizer {
                 continue;
             }
 
-            if let Some(value) = self.sanitize_assignment_arg(&arg) {
+            if let Some(value) = self.sanitize_assignment_arg(&arg, match_mode) {
                 sanitized.push(value);
                 continue;
             }
 
             if parse_options {
-                if let Some(value) = self.sanitize_inline_option_arg(&arg) {
+                if let Some(value) = self.sanitize_inline_option_arg(&arg, match_mode) {
                     sanitized.push(value);
                     continue;
                 }
                 if let Some(name) = option_name(&arg).filter(|name| {
                     self.field_sanitizer
-                        .sensitivity_for_name(name, NameMatchMode::ExactOrSuffix)
+                        .sensitivity_for_name(name, match_mode)
                         .is_some()
                 }) {
                     pending_sensitive_name = Some(name.to_string());
@@ -118,17 +119,18 @@ impl ArgvSanitizer {
     /// # Parameters
     ///
     /// * `argv` - Program and argument vector to render safely.
+    /// * `match_mode` - Field-name matching mode for options and assignments.
     ///
     /// # Returns
     ///
     /// Debug-style sanitized argv string, for example
     /// `["cmd", "--token", "****"]`.
-    pub fn sanitize_argv_display<I, S>(&self, argv: I) -> String
+    pub fn sanitize_argv_display<I, S>(&self, argv: I, match_mode: NameMatchMode) -> String
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        format!("{:?}", self.sanitize_argv(argv))
+        format!("{:?}", self.sanitize_argv(argv, match_mode))
     }
 
     /// Sanitizes one `KEY=value` argv token when the key is sensitive.
@@ -136,18 +138,17 @@ impl ArgvSanitizer {
     /// # Parameters
     ///
     /// * `arg` - Argument token.
+    /// * `match_mode` - Field-name matching mode for the assignment key.
     ///
     /// # Returns
     ///
     /// `Some(sanitized)` for assignment-like arguments, otherwise `None`.
-    fn sanitize_assignment_arg(&self, arg: &str) -> Option<String> {
+    fn sanitize_assignment_arg(&self, arg: &str, match_mode: NameMatchMode) -> Option<String> {
         let (key, value) = arg.split_once('=')?;
         if key.is_empty() {
             return None;
         }
-        let sanitized_value =
-            self.field_sanitizer
-                .sanitize_value(key, value, NameMatchMode::ExactOrSuffix);
+        let sanitized_value = self.field_sanitizer.sanitize_value(key, value, match_mode);
         if matches!(sanitized_value, std::borrow::Cow::Borrowed(_)) {
             return None;
         }
@@ -160,13 +161,19 @@ impl ArgvSanitizer {
     ///
     /// * `name` - Sensitive option or assignment name.
     /// * `value` - Value to sanitize.
+    /// * `match_mode` - Field-name matching mode for `name`.
     ///
     /// # Returns
     ///
     /// Sanitized value according to the sensitivity level resolved from `name`.
-    fn sanitize_sensitive_value(&self, name: &str, value: &str) -> String {
+    fn sanitize_sensitive_value(
+        &self,
+        name: &str,
+        value: &str,
+        match_mode: NameMatchMode,
+    ) -> String {
         self.field_sanitizer
-            .sanitize_value(name, value, NameMatchMode::ExactOrSuffix)
+            .sanitize_value(name, value, match_mode)
             .into_owned()
     }
 
@@ -175,20 +182,21 @@ impl ArgvSanitizer {
     /// # Parameters
     ///
     /// * `arg` - Argument token.
+    /// * `match_mode` - Field-name matching mode for the option name.
     ///
     /// # Returns
     ///
     /// `Some(sanitized)` when `arg` is a sensitive inline option, otherwise
     /// `None`.
-    fn sanitize_inline_option_arg(&self, arg: &str) -> Option<String> {
+    fn sanitize_inline_option_arg(&self, arg: &str, match_mode: NameMatchMode) -> Option<String> {
         if !arg.starts_with('-') || arg == "-" {
             return None;
         }
         let (left, value) = arg.split_once('=')?;
         let name = option_name(left)?;
         self.field_sanitizer
-            .sensitivity_for_name(name, NameMatchMode::ExactOrSuffix)?;
-        let sanitized_value = self.sanitize_sensitive_value(name, value);
+            .sensitivity_for_name(name, match_mode)?;
+        let sanitized_value = self.sanitize_sensitive_value(name, value, match_mode);
         Some(format!("{left}={sanitized_value}"))
     }
 }

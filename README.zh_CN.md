@@ -203,6 +203,7 @@ use qubit_sanitize::{
     FormUrlEncodedSanitizer,
     HttpBodySanitizer,
     HttpHeaderSanitizer,
+    NameMatchMode,
     UrlSanitizer,
 };
 use http::header::AUTHORIZATION;
@@ -210,6 +211,7 @@ use http::HeaderValue;
 
 let url = UrlSanitizer::default().sanitize_url_str(
     "https://alice:secret@example.com/path?access_token=abcdef#callback",
+    NameMatchMode::ExactOrSuffix,
 )?;
 assert_eq!(
     url,
@@ -217,29 +219,37 @@ assert_eq!(
 );
 
 let form = FormUrlEncodedSanitizer::default()
-    .sanitize_str("username=alice&password=secret");
+    .sanitize_str("username=alice&password=secret", NameMatchMode::ExactOrSuffix);
 assert_eq!(form, "username=alice&password=%3Credacted%3E");
 
 let header = HttpHeaderSanitizer::default()
-    .sanitize_value(&AUTHORIZATION, &HeaderValue::from_static("Bearer abcdef"));
+    .sanitize_value(
+        &AUTHORIZATION,
+        &HeaderValue::from_static("Bearer abcdef"),
+        NameMatchMode::ExactOrSuffix,
+    );
 assert_eq!(header, "****");
 
 let body_content_type = HeaderValue::from_static("application/json");
 let body = HttpBodySanitizer::default().sanitize_body(
     br#"{"user":"alice","password":"secret"}"#,
     Some(&body_content_type),
+    NameMatchMode::ExactOrSuffix,
 );
 assert_eq!(body, r#"{"password":"<redacted>","user":"alice"}"#);
 
 let argv = ArgvSanitizer::default()
-    .sanitize_argv_display(["docker", "login", "--password", "secret"]);
+    .sanitize_argv_display(
+        ["docker", "login", "--password", "secret"],
+        NameMatchMode::ExactOrSuffix,
+    );
 assert_eq!(argv, r#"["docker", "login", "--password", "<redacted>"]"#);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-adapter 的名称匹配会先走 core 的精确字段匹配；同时也支持后缀匹配，例如
-`OPENAI_API_KEY` 可以命中 `api_key`，这样带业务前缀的环境变量和命令行参数也能被
-脱敏。
+adapter 方法也和 core 的 `FieldSanitizer` 一样要求显式传入 `NameMatchMode`。如果
+希望 `OPENAI_API_KEY` 这类上下文字段名命中已配置的 `api_key`，使用
+`NameMatchMode::ExactOrSuffix`。
 
 ## 集成建议
 
@@ -254,12 +264,13 @@ adapter 的名称匹配会先走 core 的精确字段匹配；同时也支持后
 例如，HTTP crate 可以用 `UrlSanitizer` 处理解析后的 URL，用
 `HttpHeaderSanitizer` 处理 `http::HeaderMap` 和 `http::HeaderValue`。当调用方有 body
 字节和可选 `Content-Type` header 时，可以用 `HttpBodySanitizer`；它支持 JSON、
-NDJSON、URL-encoded form、multipart body、文本以及二进制 fallback marker。body
-脱敏返回值是用于日志和诊断的渲染结果，不是可回放的 HTTP body：结构化输出可能会被
-压缩，也不保证保留原始空白、字段顺序，或已脱敏 JSON 字段的原始 value 类型。调用方
-仍然负责 body 捕获上限、解压、流式边界和业务自定义解析。命令执行 crate 可以用
-`ArgvSanitizer` 处理结构化 argv，用 `EnvSanitizer` 处理显式环境变量覆盖，但不应宣称
-可以安全解析任意 shell 脚本。
+NDJSON、URL-encoded form、multipart body、显式声明的 `text/*` body 以及二进制
+fallback marker。不支持的 UTF-8 media type 会被整体 redaction，而不是原样透传。
+body 脱敏返回值是用于日志和诊断的渲染结果，不是可回放的 HTTP body：结构化输出可能
+会被压缩，也不保证保留原始空白、字段顺序，或已脱敏 JSON 字段的原始 value 类型。
+调用方仍然负责 body 捕获上限、解压、流式边界和业务自定义解析。命令执行 crate 可以
+用 `ArgvSanitizer` 处理结构化 argv，用 `EnvSanitizer` 处理显式环境变量覆盖，但不应
+宣称可以安全解析任意 shell 脚本。
 
 ## 测试
 

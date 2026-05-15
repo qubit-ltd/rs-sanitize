@@ -16,6 +16,7 @@ use qubit_sanitize::{
     FieldSanitizePolicy,
     FieldSanitizer,
     MaskPolicies,
+    NameMatchMode,
     SensitiveFields,
     SensitivityLevel,
 };
@@ -34,14 +35,31 @@ fn test_env_sanitizer_field_sanitizer_accessors() {
     sanitizer
         .field_sanitizer_mut()
         .insert_sensitive_field("custom_env", SensitivityLevel::High);
-    assert_eq!(sanitizer.sanitize_value("custom_env", "secret"), "****");
+    assert_eq!(
+        sanitizer.sanitize_value("custom_env", "secret", NameMatchMode::ExactOrSuffix),
+        "****"
+    );
 }
 
 #[test]
 fn test_env_sanitizer_masks_prefixed_sensitive_key() {
     let sanitizer = EnvSanitizer::default();
 
-    assert_eq!(sanitizer.sanitize_value("OPENAI_API_KEY", "abcdef"), "****");
+    assert_eq!(
+        sanitizer.sanitize_value("OPENAI_API_KEY", "abcdef", NameMatchMode::ExactOrSuffix),
+        "****"
+    );
+}
+
+#[test]
+fn test_env_sanitizer_exact_mode_keeps_prefixed_sensitive_key() {
+    let sanitizer = EnvSanitizer::default();
+    let value = "abcdef";
+
+    assert_eq!(
+        sanitizer.sanitize_value("OPENAI_API_KEY", value, NameMatchMode::Exact),
+        Cow::Borrowed(value),
+    );
 }
 
 #[test]
@@ -49,7 +67,7 @@ fn test_env_sanitizer_sanitize_assignment_masks_secret() {
     let sanitizer = EnvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_assignment("PASSWORD=secret"),
+        sanitizer.sanitize_assignment("PASSWORD=secret", NameMatchMode::ExactOrSuffix),
         "PASSWORD=<redacted>",
     );
 }
@@ -58,7 +76,10 @@ fn test_env_sanitizer_sanitize_assignment_masks_secret() {
 fn test_env_sanitizer_keeps_non_assignment_unchanged() {
     let sanitizer = EnvSanitizer::default();
 
-    assert_eq!(sanitizer.sanitize_assignment("PATH"), "PATH");
+    assert_eq!(
+        sanitizer.sanitize_assignment("PATH", NameMatchMode::ExactOrSuffix),
+        "PATH"
+    );
 }
 
 #[test]
@@ -66,7 +87,7 @@ fn test_env_sanitizer_sanitize_os_pair_renders_lossy_pair() {
     let sanitizer = EnvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_os_pair("SERVICE_TOKEN", "abcdef"),
+        sanitizer.sanitize_os_pair("SERVICE_TOKEN", "abcdef", NameMatchMode::ExactOrSuffix),
         ("SERVICE_TOKEN".to_string(), "****".to_string()),
     );
 }
@@ -76,7 +97,7 @@ fn test_env_sanitizer_sanitize_pair_preserves_key() {
     let sanitizer = EnvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_pair("OPENAI_API_KEY", "abcdef"),
+        sanitizer.sanitize_pair("OPENAI_API_KEY", "abcdef", NameMatchMode::ExactOrSuffix),
         ("OPENAI_API_KEY".to_string(), "****".to_string()),
     );
 }
@@ -86,7 +107,10 @@ fn test_env_sanitizer_sanitize_assignments() {
     let sanitizer = EnvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_assignments(["PASSWORD=secret", "MODE=debug"]),
+        sanitizer.sanitize_assignments(
+            ["PASSWORD=secret", "MODE=debug"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["PASSWORD=<redacted>", "MODE=debug"],
     );
 }
@@ -97,7 +121,7 @@ fn test_env_sanitizer_keeps_non_sensitive_key_borrowed() {
     let value = "debug";
 
     assert_eq!(
-        sanitizer.sanitize_value("LOG_LEVEL", value),
+        sanitizer.sanitize_value("LOG_LEVEL", value, NameMatchMode::ExactOrSuffix),
         Cow::Borrowed(value),
     );
 }
@@ -107,7 +131,10 @@ fn test_env_sanitizer_ignores_empty_canonical_name() {
     let sanitizer = EnvSanitizer::default();
     let value = "secret";
 
-    assert_eq!(sanitizer.sanitize_value("___", value), Cow::Borrowed(value),);
+    assert_eq!(
+        sanitizer.sanitize_value("___", value, NameMatchMode::ExactOrSuffix),
+        Cow::Borrowed(value),
+    );
 }
 
 #[test]
@@ -120,12 +147,18 @@ fn test_env_sanitizer_resolves_longest_suffix_match() {
         mask_policies: MaskPolicies::default(),
     }));
 
-    assert_eq!(sanitizer.sanitize_value("VENDOR_API_KEY", "abcdef"), "****");
+    assert_eq!(
+        sanitizer.sanitize_value("VENDOR_API_KEY", "abcdef", NameMatchMode::ExactOrSuffix),
+        "****"
+    );
 }
 
 #[test]
 fn test_env_sanitizer_constructed_from_field_sanitizer() {
     let sanitizer = EnvSanitizer::new(FieldSanitizer::default());
 
-    assert_eq!(sanitizer.sanitize_value("PASSWORD", "secret"), "<redacted>");
+    assert_eq!(
+        sanitizer.sanitize_value("PASSWORD", "secret", NameMatchMode::ExactOrSuffix),
+        "<redacted>"
+    );
 }

@@ -20,6 +20,8 @@ pub(super) const INVALID_OR_TRUNCATED_NDJSON_REDACTED: &str =
     "<redacted: invalid or truncated NDJSON>";
 /// Redaction marker for bodies whose Content-Type cannot be interpreted.
 pub(super) const INVALID_CONTENT_TYPE_REDACTED: &str = "<redacted: invalid content type body>";
+/// Redaction marker for UTF-8 bodies without a supported structured or text media type.
+pub(super) const UNSUPPORTED_BODY_REDACTED: &str = "<redacted: unsupported HTTP body>";
 /// Redaction marker for multipart bodies that cannot be safely summarized.
 pub(super) const MULTIPART_BODY_REDACTED: &str = "<redacted: multipart body>";
 /// Redaction marker for multipart parts that cannot be safely rendered.

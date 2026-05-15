@@ -24,6 +24,7 @@ use super::{
     redaction_markers::{
         INVALID_CONTENT_TYPE_REDACTED,
         MULTIPART_BODY_REDACTED,
+        UNSUPPORTED_BODY_REDACTED,
     },
 };
 
@@ -88,14 +89,27 @@ impl HttpBodySanitizer {
     /// * `body` - Complete HTTP body bytes.
     /// * `content_type` - Optional `Content-Type` header used to select
     ///   structured parsing rules.
+    /// * `match_mode` - Field-name matching mode for structured body fields.
     ///
     /// # Returns
     ///
-    /// Log-safe body text. Binary bodies are rendered as a byte-count marker.
-    /// Bodies with a present but non-UTF-8 `Content-Type` are fully redacted
-    /// because the structured parser cannot choose a safe media-type rule.
-    pub fn sanitize_body(&self, body: &[u8], content_type: Option<&HeaderValue>) -> String {
-        self.sanitize_body_inner(body, body.len(), content_type, BodyInputKind::Complete)
+    /// Log-safe body text. Unsupported UTF-8 bodies are redacted. Binary bodies
+    /// are rendered as a byte-count marker. Bodies with a present but non-UTF-8
+    /// `Content-Type` are fully redacted because the structured parser cannot
+    /// choose a safe media-type rule.
+    pub fn sanitize_body(
+        &self,
+        body: &[u8],
+        content_type: Option<&HeaderValue>,
+        match_mode: NameMatchMode,
+    ) -> String {
+        self.sanitize_body_inner(
+            body,
+            body.len(),
+            content_type,
+            BodyInputKind::Complete,
+            match_mode,
+        )
     }
 
     /// Sanitizes a caller-provided HTTP body preview.
@@ -109,8 +123,8 @@ impl HttpBodySanitizer {
     /// Unlike [`Self::sanitize_body`], this method must assume the bytes may be
     /// incomplete. JSON, NDJSON, and multipart previews are redacted when they
     /// cannot be parsed safely, which avoids leaking partial sensitive values.
-    /// URL-encoded forms and text bodies render the available prefix with a
-    /// truncation marker when needed.
+    /// URL-encoded forms and declared `text/*` bodies render the available
+    /// prefix with a truncation marker when needed.
     ///
     /// The returned string is a diagnostic rendering, not a replayable HTTP
     /// body. Structured outputs may be compacted and may not preserve the
@@ -123,24 +137,27 @@ impl HttpBodySanitizer {
     /// * `source_len` - Total source body length when known.
     /// * `content_type` - Optional `Content-Type` header used to select
     ///   structured parsing rules.
+    /// * `match_mode` - Field-name matching mode for structured body fields.
     ///
     /// # Returns
     ///
     /// Log-safe preview text with a truncation marker when `source_len` exceeds
-    /// `body_prefix.len()`. Bodies with a present but non-UTF-8 `Content-Type`
-    /// are fully redacted because the structured parser cannot choose a safe
-    /// media-type rule.
+    /// `body_prefix.len()`. Unsupported UTF-8 previews are redacted. Bodies with
+    /// a present but non-UTF-8 `Content-Type` are fully redacted because the
+    /// structured parser cannot choose a safe media-type rule.
     pub fn sanitize_body_preview(
         &self,
         body_prefix: &[u8],
         source_len: usize,
         content_type: Option<&HeaderValue>,
+        match_mode: NameMatchMode,
     ) -> String {
         self.sanitize_body_inner(
             body_prefix,
             source_len.max(body_prefix.len()),
             content_type,
             BodyInputKind::Preview,
+            match_mode,
         )
     }
 
@@ -152,6 +169,7 @@ impl HttpBodySanitizer {
     /// * `source_len` - Full source length used for preview and binary markers.
     /// * `content_type` - Optional `Content-Type` header.
     /// * `input_kind` - Whether `bytes` are complete or a preview prefix.
+    /// * `match_mode` - Field-name matching mode for structured body fields.
     ///
     /// # Returns
     ///
@@ -162,6 +180,7 @@ impl HttpBodySanitizer {
         source_len: usize,
         content_type: Option<&HeaderValue>,
         input_kind: BodyInputKind,
+        match_mode: NameMatchMode,
     ) -> String {
         if bytes.is_empty() {
             return input_kind.empty_output(source_len);
@@ -178,29 +197,33 @@ impl HttpBodySanitizer {
             if input_kind.is_truncated(bytes.len(), source_len) {
                 return format!("{MULTIPART_BODY_REDACTED}{suffix}");
             }
-            if let Some(text) = multipart::sanitize_multipart(self, content_type, bytes) {
+            if let Some(text) = multipart::sanitize_multipart(self, content_type, bytes, match_mode)
+            {
                 return text;
             }
             return MULTIPART_BODY_REDACTED.to_string();
         }
         if content_type.is_some_and(content_type::is_ndjson) {
-            if let Some(text) = self.sanitize_ndjson(bytes) {
+            if let Some(text) = self.sanitize_ndjson(bytes, match_mode) {
                 return format!("{text}{suffix}");
             }
             return format!("{}{suffix}", input_kind.invalid_ndjson_marker());
         }
         if self.is_json_body(content_type, bytes) {
-            if let Some(text) = self.sanitize_json(bytes) {
+            if let Some(text) = self.sanitize_json(bytes, match_mode) {
                 return format!("{text}{suffix}");
             }
             return format!("{}{suffix}", input_kind.invalid_json_marker());
         }
         if content_type.is_some_and(content_type::is_form_urlencoded) {
-            return format!("{}{}", self.sanitize_form(bytes), suffix);
+            return format!("{}{}", self.sanitize_form(bytes, match_mode), suffix);
         }
 
         match std::str::from_utf8(bytes) {
-            Ok(text) => format!("{text}{suffix}"),
+            Ok(text) if content_type.is_some_and(content_type::is_text) => {
+                format!("{text}{suffix}")
+            }
+            Ok(_) => format!("{UNSUPPORTED_BODY_REDACTED}{suffix}"),
             Err(_) => format!("<binary {} bytes>{suffix}", source_len.max(bytes.len())),
         }
     }
@@ -228,13 +251,14 @@ impl HttpBodySanitizer {
     /// # Parameters
     ///
     /// * `bytes` - UTF-8 JSON bytes.
+    /// * `match_mode` - Field-name matching mode for JSON object keys.
     ///
     /// # Returns
     ///
     /// Sanitized compact JSON text, or `None` when parsing or rendering fails.
-    pub(super) fn sanitize_json(&self, bytes: &[u8]) -> Option<String> {
+    pub(super) fn sanitize_json(&self, bytes: &[u8], match_mode: NameMatchMode) -> Option<String> {
         let mut value = serde_json::from_slice::<Value>(bytes).ok()?;
-        self.redact_json_value(&mut value);
+        self.redact_json_value(&mut value, match_mode);
         serde_json::to_string(&value).ok()
     }
 
@@ -243,11 +267,16 @@ impl HttpBodySanitizer {
     /// # Parameters
     ///
     /// * `bytes` - UTF-8 NDJSON bytes.
+    /// * `match_mode` - Field-name matching mode for JSON object keys.
     ///
     /// # Returns
     ///
     /// Sanitized NDJSON text, or `None` when any non-empty line is invalid.
-    pub(super) fn sanitize_ndjson(&self, bytes: &[u8]) -> Option<String> {
+    pub(super) fn sanitize_ndjson(
+        &self,
+        bytes: &[u8],
+        match_mode: NameMatchMode,
+    ) -> Option<String> {
         let text = std::str::from_utf8(bytes).ok()?;
         let trailing_newline = text.ends_with('\n');
         let mut sanitized_lines = Vec::new();
@@ -257,7 +286,7 @@ impl HttpBodySanitizer {
                 continue;
             }
             let mut value = serde_json::from_str::<Value>(line).ok()?;
-            self.redact_json_value(&mut value);
+            self.redact_json_value(&mut value, match_mode);
             sanitized_lines.push(serde_json::to_string(&value).ok()?);
         }
         let mut result = sanitized_lines.join("\n");
@@ -272,20 +301,21 @@ impl HttpBodySanitizer {
     /// # Parameters
     ///
     /// * `value` - JSON value to mutate.
-    fn redact_json_value(&self, value: &mut Value) {
+    /// * `match_mode` - Field-name matching mode for JSON object keys.
+    fn redact_json_value(&self, value: &mut Value, match_mode: NameMatchMode) {
         match value {
             Value::Object(map) => {
                 for (key, value) in map.iter_mut() {
-                    if let Some(masked) = self.mask_json_field_value(key, value) {
+                    if let Some(masked) = self.mask_json_field_value(key, value, match_mode) {
                         *value = Value::String(masked);
                     } else {
-                        self.redact_json_value(value);
+                        self.redact_json_value(value, match_mode);
                     }
                 }
             }
             Value::Array(items) => {
                 for item in items {
-                    self.redact_json_value(item);
+                    self.redact_json_value(item, match_mode);
                 }
             }
             Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
@@ -298,14 +328,20 @@ impl HttpBodySanitizer {
     ///
     /// * `field` - JSON object key used for sensitivity lookup.
     /// * `value` - JSON value to mask when the key is sensitive.
+    /// * `match_mode` - Field-name matching mode for `field`.
     ///
     /// # Returns
     ///
     /// `Some(masked)` when `field` is sensitive, otherwise `None`.
-    fn mask_json_field_value(&self, field: &str, value: &Value) -> Option<String> {
+    fn mask_json_field_value(
+        &self,
+        field: &str,
+        value: &Value,
+        match_mode: NameMatchMode,
+    ) -> Option<String> {
         let level = self
             .field_sanitizer
-            .sensitivity_for_name(field, NameMatchMode::ExactOrSuffix)?;
+            .sensitivity_for_name(field, match_mode)?;
         let serialized;
         let value = match value {
             Value::String(value) => value.as_str(),
@@ -329,18 +365,17 @@ impl HttpBodySanitizer {
     /// # Parameters
     ///
     /// * `bytes` - URL-encoded form body bytes.
+    /// * `match_mode` - Field-name matching mode for form keys.
     ///
     /// # Returns
     ///
     /// Sanitized URL-encoded form text.
-    pub(super) fn sanitize_form(&self, bytes: &[u8]) -> String {
+    pub(super) fn sanitize_form(&self, bytes: &[u8], match_mode: NameMatchMode) -> String {
         let mut serializer = form_urlencoded::Serializer::new(String::new());
         for (key, value) in form_urlencoded::parse(bytes) {
-            let sanitized_value = self.field_sanitizer.sanitize_value(
-                key.as_ref(),
-                value.as_ref(),
-                NameMatchMode::ExactOrSuffix,
-            );
+            let sanitized_value =
+                self.field_sanitizer
+                    .sanitize_value(key.as_ref(), value.as_ref(), match_mode);
             serializer.append_pair(key.as_ref(), sanitized_value.as_ref());
         }
         serializer.finish()

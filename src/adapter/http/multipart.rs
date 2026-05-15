@@ -28,6 +28,7 @@ use super::{
 /// * `sanitizer` - HTTP body sanitizer used for nested part values.
 /// * `content_type` - Multipart content type text.
 /// * `bytes` - Complete multipart body bytes.
+/// * `match_mode` - Field-name matching mode for multipart field names.
 ///
 /// # Returns
 ///
@@ -36,13 +37,14 @@ pub(super) fn sanitize_multipart(
     sanitizer: &HttpBodySanitizer,
     content_type: Option<&str>,
     bytes: &[u8],
+    match_mode: NameMatchMode,
 ) -> Option<String> {
     let boundary = content_type::multipart_boundary(content_type?)?;
     let text = std::str::from_utf8(bytes).ok()?;
     let segments = multipart_part_segments(text, &boundary)?;
     let mut lines = Vec::with_capacity(segments.len());
     for segment in segments {
-        lines.push(sanitize_multipart_part(sanitizer, segment)?);
+        lines.push(sanitize_multipart_part(sanitizer, segment, match_mode)?);
     }
     if lines.is_empty() {
         return Some("<multipart>\n</multipart>".to_string());
@@ -56,11 +58,16 @@ pub(super) fn sanitize_multipart(
 ///
 /// * `sanitizer` - HTTP body sanitizer used for nested part values.
 /// * `segment` - Raw part segment without boundary delimiter lines.
+/// * `match_mode` - Field-name matching mode for multipart field names.
 ///
 /// # Returns
 ///
 /// Log-safe `name=value` line, or `None` when part headers are malformed.
-fn sanitize_multipart_part(sanitizer: &HttpBodySanitizer, segment: &str) -> Option<String> {
+fn sanitize_multipart_part(
+    sanitizer: &HttpBodySanitizer,
+    segment: &str,
+    match_mode: NameMatchMode,
+) -> Option<String> {
     let (headers, body) = split_multipart_headers_and_body(segment)?;
     let mut content_disposition = None;
     let mut content_type = None;
@@ -86,6 +93,7 @@ fn sanitize_multipart_part(sanitizer: &HttpBodySanitizer, segment: &str) -> Opti
         filename.as_deref(),
         content_type,
         body,
+        match_mode,
     );
     Some(format!("{field_name}={value}"))
 }
@@ -99,6 +107,7 @@ fn sanitize_multipart_part(sanitizer: &HttpBodySanitizer, segment: &str) -> Opti
 /// * `filename` - Optional filename from `Content-Disposition`.
 /// * `content_type` - Optional part-level content type.
 /// * `body` - Part body text.
+/// * `match_mode` - Field-name matching mode for multipart field names.
 ///
 /// # Returns
 ///
@@ -109,15 +118,16 @@ fn sanitize_multipart_part_value(
     filename: Option<&str>,
     content_type: Option<&str>,
     body: &str,
+    match_mode: NameMatchMode,
 ) -> String {
     if sanitizer
         .field_sanitizer()
-        .sensitivity_for_name(field_name, NameMatchMode::ExactOrSuffix)
+        .sensitivity_for_name(field_name, match_mode)
         .is_some()
     {
         return sanitizer
             .field_sanitizer()
-            .sanitize_value(field_name, body, NameMatchMode::ExactOrSuffix)
+            .sanitize_value(field_name, body, match_mode)
             .into_owned();
     }
     if filename.is_some() {
@@ -131,16 +141,16 @@ fn sanitize_multipart_part_value(
     };
     if content_type::is_json(content_type) {
         return sanitizer
-            .sanitize_json(body.as_bytes())
+            .sanitize_json(body.as_bytes(), match_mode)
             .unwrap_or_else(|| MULTIPART_PART_REDACTED.to_string());
     }
     if content_type::is_ndjson(content_type) {
         return sanitizer
-            .sanitize_ndjson(body.as_bytes())
+            .sanitize_ndjson(body.as_bytes(), match_mode)
             .unwrap_or_else(|| MULTIPART_PART_REDACTED.to_string());
     }
     if content_type::is_form_urlencoded(content_type) {
-        return sanitizer.sanitize_form(body.as_bytes());
+        return sanitizer.sanitize_form(body.as_bytes(), match_mode);
     }
     if content_type::is_text(content_type) {
         return body.to_string();

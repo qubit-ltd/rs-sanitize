@@ -61,18 +61,17 @@ impl FormUrlEncodedSanitizer {
     /// # Parameters
     ///
     /// * `form` - URL-encoded form bytes.
+    /// * `match_mode` - Field-name matching mode for form keys.
     ///
     /// # Returns
     ///
     /// Sanitized URL-encoded form string.
-    pub fn sanitize_bytes(&self, form: &[u8]) -> String {
+    pub fn sanitize_bytes(&self, form: &[u8], match_mode: NameMatchMode) -> String {
         let mut serializer = form_urlencoded::Serializer::new(String::new());
         for (key, value) in form_urlencoded::parse(form) {
-            let sanitized_value = self.field_sanitizer.sanitize_value(
-                key.as_ref(),
-                value.as_ref(),
-                NameMatchMode::ExactOrSuffix,
-            );
+            let sanitized_value =
+                self.field_sanitizer
+                    .sanitize_value(key.as_ref(), value.as_ref(), match_mode);
             serializer.append_pair(key.as_ref(), sanitized_value.as_ref());
         }
         serializer.finish()
@@ -83,12 +82,13 @@ impl FormUrlEncodedSanitizer {
     /// # Parameters
     ///
     /// * `form` - URL-encoded form string.
+    /// * `match_mode` - Field-name matching mode for form keys.
     ///
     /// # Returns
     ///
     /// Sanitized URL-encoded form string.
-    pub fn sanitize_str(&self, form: &str) -> String {
-        self.sanitize_bytes(form.as_bytes())
+    pub fn sanitize_str(&self, form: &str, match_mode: NameMatchMode) -> String {
+        self.sanitize_bytes(form.as_bytes(), match_mode)
     }
 }
 

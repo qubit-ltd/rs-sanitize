@@ -12,6 +12,7 @@
 use qubit_sanitize::{
     FieldSanitizer,
     FormUrlEncodedSanitizer,
+    NameMatchMode,
     SensitivityLevel,
 };
 
@@ -30,7 +31,10 @@ fn test_form_urlencoded_sanitizer_field_sanitizer_accessors() {
         .field_sanitizer_mut()
         .insert_sensitive_field("custom_field", SensitivityLevel::High);
     assert_eq!(
-        sanitizer.sanitize_str("custom_field=abcdef&mode=debug"),
+        sanitizer.sanitize_str(
+            "custom_field=abcdef&mode=debug",
+            NameMatchMode::ExactOrSuffix
+        ),
         "custom_field=****&mode=debug",
     );
 }
@@ -40,8 +44,21 @@ fn test_form_urlencoded_sanitizer_masks_sensitive_fields() {
     let sanitizer = FormUrlEncodedSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_str("username=alice&password=secret&openai_api_key=abcdef&empty="),
+        sanitizer.sanitize_str(
+            "username=alice&password=secret&openai_api_key=abcdef&empty=",
+            NameMatchMode::ExactOrSuffix
+        ),
         "username=alice&password=%3Credacted%3E&openai_api_key=****&empty=",
+    );
+}
+
+#[test]
+fn test_form_urlencoded_sanitizer_exact_mode_keeps_prefixed_fields() {
+    let sanitizer = FormUrlEncodedSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_str("openai_api_key=abcdef", NameMatchMode::Exact),
+        "openai_api_key=abcdef",
     );
 }
 
@@ -50,7 +67,10 @@ fn test_form_urlencoded_sanitizer_preserves_duplicate_fields() {
     let sanitizer = FormUrlEncodedSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_str("token=first&token=second&mode=debug"),
+        sanitizer.sanitize_str(
+            "token=first&token=second&mode=debug",
+            NameMatchMode::ExactOrSuffix
+        ),
         "token=****&token=****&mode=debug",
     );
 }
@@ -60,7 +80,7 @@ fn test_form_urlencoded_sanitizer_sanitize_bytes() {
     let sanitizer = FormUrlEncodedSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_bytes(b"password=secret&mode=debug"),
+        sanitizer.sanitize_bytes(b"password=secret&mode=debug", NameMatchMode::ExactOrSuffix),
         "password=%3Credacted%3E&mode=debug",
     );
 }
@@ -70,7 +90,7 @@ fn test_form_urlencoded_sanitizer_constructed_from_field_sanitizer() {
     let sanitizer = FormUrlEncodedSanitizer::new(FieldSanitizer::default());
 
     assert_eq!(
-        sanitizer.sanitize_str("password=secret"),
+        sanitizer.sanitize_str("password=secret", NameMatchMode::ExactOrSuffix),
         "password=%3Credacted%3E",
     );
 }

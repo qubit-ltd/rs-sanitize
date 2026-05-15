@@ -12,6 +12,7 @@
 use qubit_sanitize::{
     ArgvSanitizer,
     FieldSanitizer,
+    NameMatchMode,
     SensitivityLevel,
 };
 
@@ -30,7 +31,10 @@ fn test_argv_sanitizer_field_sanitizer_accessors() {
         .field_sanitizer_mut()
         .insert_sensitive_field("custom_flag", SensitivityLevel::High);
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "--custom-flag", "secret"]),
+        sanitizer.sanitize_argv(
+            ["cmd", "--custom-flag", "secret"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["cmd", "--custom-flag", "****"],
     );
 }
@@ -40,14 +44,17 @@ fn test_argv_sanitizer_masks_sensitive_option_next_value() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv([
-            "docker",
-            "login",
-            "--password",
-            "secret",
-            "--username",
-            "alice"
-        ]),
+        sanitizer.sanitize_argv(
+            [
+                "docker",
+                "login",
+                "--password",
+                "secret",
+                "--username",
+                "alice"
+            ],
+            NameMatchMode::ExactOrSuffix
+        ),
         [
             "docker",
             "login",
@@ -64,7 +71,10 @@ fn test_argv_sanitizer_masks_sensitive_inline_option() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["client", "--token=abcdef", "--mode", "debug"]),
+        sanitizer.sanitize_argv(
+            ["client", "--token=abcdef", "--mode", "debug"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["client", "--token=****", "--mode", "debug"],
     );
 }
@@ -74,7 +84,7 @@ fn test_argv_sanitizer_masks_empty_inline_option_value() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["client", "--token=", "mode"]),
+        sanitizer.sanitize_argv(["client", "--token=", "mode"], NameMatchMode::ExactOrSuffix),
         ["client", "--token=", "mode"],
     );
 }
@@ -84,7 +94,10 @@ fn test_argv_sanitizer_keeps_nonsensitive_inline_option_value() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["client", "--not-sensitive=abcdef"]),
+        sanitizer.sanitize_argv(
+            ["client", "--not-sensitive=abcdef"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["client", "--not-sensitive=abcdef"],
     );
 }
@@ -94,8 +107,21 @@ fn test_argv_sanitizer_masks_assignment_tokens() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["env", "OPENAI_API_KEY=abcdef", "MODE=debug"]),
+        sanitizer.sanitize_argv(
+            ["env", "OPENAI_API_KEY=abcdef", "MODE=debug"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["env", "OPENAI_API_KEY=****", "MODE=debug"],
+    );
+}
+
+#[test]
+fn test_argv_sanitizer_exact_mode_keeps_prefixed_assignment_token() {
+    let sanitizer = ArgvSanitizer::default();
+
+    assert_eq!(
+        sanitizer.sanitize_argv(["env", "OPENAI_API_KEY=abcdef"], NameMatchMode::Exact),
+        ["env", "OPENAI_API_KEY=abcdef"],
     );
 }
 
@@ -104,7 +130,10 @@ fn test_argv_sanitizer_keeps_shell_payload_unparsed() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["sh", "-c", "echo $OPENAI_API_KEY"]),
+        sanitizer.sanitize_argv(
+            ["sh", "-c", "echo $OPENAI_API_KEY"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["sh", "-c", "echo $OPENAI_API_KEY"],
     );
 }
@@ -114,7 +143,10 @@ fn test_argv_sanitizer_formats_display_string() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv_display(["cmd", "--client-secret", "abcdef"]),
+        sanitizer.sanitize_argv_display(
+            ["cmd", "--client-secret", "abcdef"],
+            NameMatchMode::ExactOrSuffix
+        ),
         r#"["cmd", "--client-secret", "<redacted>"]"#,
     );
 }
@@ -124,7 +156,10 @@ fn test_argv_sanitizer_stops_option_parsing_at_double_dash() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "--", "--password", "secret"]),
+        sanitizer.sanitize_argv(
+            ["cmd", "--", "--password", "secret"],
+            NameMatchMode::ExactOrSuffix
+        ),
         ["cmd", "--", "--password", "secret"],
     );
 }
@@ -134,7 +169,7 @@ fn test_argv_sanitizer_keeps_single_dash_token() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "-", "secret"]),
+        sanitizer.sanitize_argv(["cmd", "-", "secret"], NameMatchMode::ExactOrSuffix),
         ["cmd", "-", "secret"]
     );
 }
@@ -144,7 +179,7 @@ fn test_argv_sanitizer_masks_single_dash_sensitive_option() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "-password", "secret"]),
+        sanitizer.sanitize_argv(["cmd", "-password", "secret"], NameMatchMode::ExactOrSuffix),
         ["cmd", "-password", "<redacted>"],
     );
 }
@@ -154,7 +189,7 @@ fn test_argv_sanitizer_ignores_assignment_with_empty_key() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "=secret"]),
+        sanitizer.sanitize_argv(["cmd", "=secret"], NameMatchMode::ExactOrSuffix),
         ["cmd", "=secret"]
     );
 }
@@ -164,7 +199,7 @@ fn test_argv_sanitizer_keeps_option_name_only_dashes() {
     let sanitizer = ArgvSanitizer::default();
 
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "---", "value"]),
+        sanitizer.sanitize_argv(["cmd", "---", "value"], NameMatchMode::ExactOrSuffix),
         ["cmd", "---", "value"]
     );
 }
@@ -174,7 +209,7 @@ fn test_argv_sanitizer_constructed_from_field_sanitizer() {
     let sanitizer = ArgvSanitizer::new(FieldSanitizer::default());
 
     assert_eq!(
-        sanitizer.sanitize_argv(["cmd", "--token", "abcdef"]),
+        sanitizer.sanitize_argv(["cmd", "--token", "abcdef"], NameMatchMode::ExactOrSuffix),
         ["cmd", "--token", "****"],
     );
 }

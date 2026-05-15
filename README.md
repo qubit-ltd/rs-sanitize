@@ -213,6 +213,7 @@ use qubit_sanitize::{
     FormUrlEncodedSanitizer,
     HttpBodySanitizer,
     HttpHeaderSanitizer,
+    NameMatchMode,
     UrlSanitizer,
 };
 use http::header::AUTHORIZATION;
@@ -220,6 +221,7 @@ use http::HeaderValue;
 
 let url = UrlSanitizer::default().sanitize_url_str(
     "https://alice:secret@example.com/path?access_token=abcdef#callback",
+    NameMatchMode::ExactOrSuffix,
 )?;
 assert_eq!(
     url,
@@ -227,29 +229,37 @@ assert_eq!(
 );
 
 let form = FormUrlEncodedSanitizer::default()
-    .sanitize_str("username=alice&password=secret");
+    .sanitize_str("username=alice&password=secret", NameMatchMode::ExactOrSuffix);
 assert_eq!(form, "username=alice&password=%3Credacted%3E");
 
 let header = HttpHeaderSanitizer::default()
-    .sanitize_value(&AUTHORIZATION, &HeaderValue::from_static("Bearer abcdef"));
+    .sanitize_value(
+        &AUTHORIZATION,
+        &HeaderValue::from_static("Bearer abcdef"),
+        NameMatchMode::ExactOrSuffix,
+    );
 assert_eq!(header, "****");
 
 let body_content_type = HeaderValue::from_static("application/json");
 let body = HttpBodySanitizer::default().sanitize_body(
     br#"{"user":"alice","password":"secret"}"#,
     Some(&body_content_type),
+    NameMatchMode::ExactOrSuffix,
 );
 assert_eq!(body, r#"{"password":"<redacted>","user":"alice"}"#);
 
 let argv = ArgvSanitizer::default()
-    .sanitize_argv_display(["docker", "login", "--password", "secret"]);
+    .sanitize_argv_display(
+        ["docker", "login", "--password", "secret"],
+        NameMatchMode::ExactOrSuffix,
+    );
 assert_eq!(argv, r#"["docker", "login", "--password", "<redacted>"]"#);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Adapter name matching first uses exact core field matching. It also supports
-suffix matching for contextual names such as `OPENAI_API_KEY`, so prefixed
-environment variables and command-line options can still be masked.
+Adapter methods require an explicit `NameMatchMode`, just like the core
+`FieldSanitizer` methods. Use `NameMatchMode::ExactOrSuffix` when contextual
+names such as `OPENAI_API_KEY` should match the configured field `api_key`.
 
 ## Integration Guidance
 
@@ -267,14 +277,15 @@ For example, an HTTP crate can use `UrlSanitizer` for parsed URLs and
 `HttpHeaderSanitizer` for `http::HeaderMap` and `http::HeaderValue` values. It
 can use `HttpBodySanitizer` when it has body bytes plus an optional
 `Content-Type` header; the adapter supports JSON, NDJSON, URL-encoded forms,
-multipart bodies, text, and binary fallback markers. The returned body string is
-for logs and diagnostics, not a replayable HTTP body: structured output may be
-compacted and may not preserve original whitespace, field order, or JSON value
-types for redacted fields. The caller still owns capture limits, decompression,
-streaming boundaries, and any application-specific parsing. A command runner can
-use `ArgvSanitizer` for structured argv and `EnvSanitizer` for explicit
-environment overrides, but should not claim to safely parse arbitrary shell
-scripts.
+multipart bodies, declared `text/*` bodies, and binary fallback markers.
+Unsupported UTF-8 media types are redacted rather than passed through. The
+returned body string is for logs and diagnostics, not a replayable HTTP body:
+structured output may be compacted and may not preserve original whitespace,
+field order, or JSON value types for redacted fields. The caller still owns
+capture limits, decompression, streaming boundaries, and any
+application-specific parsing. A command runner can use `ArgvSanitizer` for
+structured argv and `EnvSanitizer` for explicit environment overrides, but
+should not claim to safely parse arbitrary shell scripts.
 
 ## Testing
 

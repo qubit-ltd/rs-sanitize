@@ -11,6 +11,7 @@
 
 use qubit_sanitize::{
     FieldSanitizer,
+    NameMatchMode,
     UrlSanitizer,
 };
 use url::Url;
@@ -33,7 +34,7 @@ fn test_url_sanitizer_field_sanitizer_accessors() {
         .expect("test URL should parse");
 
     assert_eq!(
-        sanitizer.sanitize_url(&url),
+        sanitizer.sanitize_url(&url, NameMatchMode::ExactOrSuffix),
         "https://example.com/?custom_query=****&mode=debug",
     );
 }
@@ -47,7 +48,7 @@ fn test_url_sanitizer_sanitize_url_masks_sensitive_components() {
     .expect("test URL should parse");
 
     assert_eq!(
-        sanitizer.sanitize_url(&url),
+        sanitizer.sanitize_url(&url, NameMatchMode::ExactOrSuffix),
         "https://****:****@example.com/path?access_token=****&mode=debug#****",
     );
 }
@@ -58,9 +59,27 @@ fn test_url_sanitizer_sanitize_url_str_parses_and_masks_prefixed_query_name() {
 
     assert_eq!(
         sanitizer
-            .sanitize_url_str("https://example.com/callback?openai_api_key=abcdef&state=ok")
+            .sanitize_url_str(
+                "https://example.com/callback?openai_api_key=abcdef&state=ok",
+                NameMatchMode::ExactOrSuffix
+            )
             .expect("test URL should parse"),
         "https://example.com/callback?openai_api_key=****&state=ok",
+    );
+}
+
+#[test]
+fn test_url_sanitizer_sanitize_url_str_exact_mode_keeps_prefixed_query_name() {
+    let sanitizer = UrlSanitizer::default();
+
+    assert_eq!(
+        sanitizer
+            .sanitize_url_str(
+                "https://example.com/callback?openai_api_key=abcdef&state=ok",
+                NameMatchMode::Exact,
+            )
+            .expect("test URL should parse"),
+        "https://example.com/callback?openai_api_key=abcdef&state=ok",
     );
 }
 
@@ -68,7 +87,11 @@ fn test_url_sanitizer_sanitize_url_str_parses_and_masks_prefixed_query_name() {
 fn test_url_sanitizer_sanitize_url_str_reports_parse_error() {
     let sanitizer = UrlSanitizer::default();
 
-    assert!(sanitizer.sanitize_url_str("not a url").is_err());
+    assert!(
+        sanitizer
+            .sanitize_url_str("not a url", NameMatchMode::ExactOrSuffix)
+            .is_err()
+    );
 }
 
 #[test]
@@ -78,7 +101,7 @@ fn test_url_sanitizer_sanitize_url_without_query() {
         .expect("test URL should parse");
 
     assert_eq!(
-        sanitizer.sanitize_url(&url),
+        sanitizer.sanitize_url(&url, NameMatchMode::ExactOrSuffix),
         "https://****:****@example.com/path#****",
     );
 }
@@ -90,7 +113,7 @@ fn test_url_sanitizer_constructed_from_field_sanitizer() {
         Url::parse("https://example.com/?access_token=abcdef").expect("test URL should parse");
 
     assert_eq!(
-        sanitizer.sanitize_url(&url),
+        sanitizer.sanitize_url(&url, NameMatchMode::ExactOrSuffix),
         "https://example.com/?access_token=****",
     );
 }
