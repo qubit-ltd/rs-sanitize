@@ -209,10 +209,12 @@ use qubit_sanitize::{
 use http::header::AUTHORIZATION;
 use http::HeaderValue;
 
-let url = UrlSanitizer::default().sanitize_url_str(
-    "https://alice:secret@example.com/path?access_token=abcdef#callback",
-    NameMatchMode::ExactOrSuffix,
-)?;
+let url = UrlSanitizer::default()
+    .sanitize_url_str(
+        "https://alice:secret@example.com/path?access_token=abcdef#callback",
+        NameMatchMode::ExactOrSuffix,
+    )
+    .expect("sample URL should parse");
 assert_eq!(
     url,
     "https://****:****@example.com/path?access_token=****#****",
@@ -244,7 +246,6 @@ let argv = ArgvSanitizer::default()
         NameMatchMode::ExactOrSuffix,
     );
 assert_eq!(argv, r#"["docker", "login", "--password", "<redacted>"]"#);
-# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 adapter 方法也和 core 的 `FieldSanitizer` 一样要求显式传入 `NameMatchMode`。如果
